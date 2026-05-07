@@ -15,6 +15,11 @@
     </PackageReference>
   </ItemGroup>
 
-  
+  <ItemGroup>
+    <Compile Remove="WebApplication1\**" />
+    <Content Remove="WebApplication1\**" />
+    <EmbeddedResource Remove="WebApplication1\**" />
+    <None Remove="WebApplication1\**" />
+  </ItemGroup>
 
 </Project>

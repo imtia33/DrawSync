@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using DrawSync.UnitOfWork.Interface;
 using DrawSync.Data;
 using DrawSync.Models;
 using DrawSync.Models.ViewModels;
@@ -12,12 +13,12 @@ namespace DrawSync.Controllers
 {
     public class AuthController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly PasswordHasher<User> _passwordHasher;
 
-        public AuthController(ApplicationDbContext context, PasswordHasher<User> passwordHasher)
+        public AuthController(IUnitOfWork unitOfWork, PasswordHasher<User> passwordHasher)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
             _passwordHasher = passwordHasher;
         }
 
@@ -40,9 +41,7 @@ namespace DrawSync.Controllers
                 return View(model);
             }
 
-            var user = await _context.Users
-                .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.Email == model.Email);
+            var user = await _unitOfWork.Users.GetByEmailAsync(model.Email);
 
             if (user == null || !user.IsActive)
             {
@@ -99,19 +98,18 @@ namespace DrawSync.Controllers
                 return View(model);
             }
 
-            if (await _context.Users.AnyAsync(u => u.Email == model.Email))
+            if (await _unitOfWork.Users.GetByEmailAsync(model.Email) != null)
             {
                 ModelState.AddModelError("Email", "Email is already in use.");
                 return View(model);
             }
 
-            var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "User");
+            var userRole = (await _unitOfWork.Roles.GetAllAsync()).FirstOrDefault(r => r.Name == "User");
             if (userRole == null)
             {
-                // Fallback or handle error - based on TM2 seed data, it should exist.
                 userRole = new Role { Name = "User" };
-                _context.Roles.Add(userRole);
-                await _context.SaveChangesAsync();
+                await _unitOfWork.Roles.AddAsync(userRole);
+                await _unitOfWork.SaveChangesAsync();
             }
 
             var user = new User
@@ -125,8 +123,8 @@ namespace DrawSync.Controllers
 
             user.PasswordHash = _passwordHasher.HashPassword(user, model.Password);
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.Users.AddAsync(user);
+            await _unitOfWork.SaveChangesAsync();
 
             return RedirectToAction(nameof(Login));
         }

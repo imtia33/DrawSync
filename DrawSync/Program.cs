@@ -1,5 +1,7 @@
 using DrawSync.Data;
 using DrawSync.Models;
+using DrawSync.Repositories.Interface;
+using DrawSync.UnitOfWork.Interface;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -9,8 +11,15 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+// Add HttpContextAccessor
+builder.Services.AddHttpContextAccessor();
+// Register SessionContextInterceptor
+builder.Services.AddScoped<SessionContextInterceptor>();
+
 // Configure EF Core
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
+{
+    var interceptor = serviceProvider.GetRequiredService<SessionContextInterceptor>();
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
         sqlServerOptionsAction: sqlOptions =>
         {
@@ -18,7 +27,16 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 maxRetryCount: 5,
                 maxRetryDelay: TimeSpan.FromSeconds(30),
                 errorNumbersToAdd: null);
-        }));
+        })
+    .AddInterceptors(interceptor);
+});
+
+// Register Repository Layer
+builder.Services.AddScoped<IUserRepository, DrawSync.Repositories.Application.UserRepository>();
+builder.Services.AddScoped<IRoleRepository, DrawSync.Repositories.Application.RoleRepository>();
+
+// Register Unit of Work
+builder.Services.AddScoped<DrawSync.UnitOfWork.Interface.IUnitOfWork, DrawSync.UnitOfWork.Application.UnitOfWork>();
 
 // Configure Authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
