@@ -1,0 +1,88 @@
+@model DrawSync.Models.ViewModels.LoginViewModel
+
+@{
+    ViewData["Title"] = "Welcome Back";
+}
+
+<div class="blob-1 floating-blob"></div>
+<div class="blob-2 floating-blob"></div>
+
+<div class="auth-container">
+    <div class="auth-card">
+        <h1 class="auth-title">DrawSync</h1>
+        <p class="auth-subtitle">Enter your details to access your account</p>
+
+        <form asp-action="Login" method="post" id="loginForm">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            
+            <div class="form-group">
+                <label asp-for="Email" class="form-label">Email Address</label>
+                <input asp-for="Email" class="form-control-custom" placeholder="name@example.com" autocomplete="email" />
+                <span asp-for="Email" class="field-validation-error"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Password" class="form-label">Password</label>
+                <div class="password-wrapper">
+                    <input asp-for="Password" type="password" class="form-control-custom" placeholder="••••••••" id="passwordInput" />
+                    <span class="password-toggle" id="passwordToggle">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    </span>
+                </div>
+                <span asp-for="Password" class="field-validation-error"></span>
+            </div>
+
+            <div class="form-group d-flex align-items-center mb-4">
+                <input asp-for="RememberMe" class="form-check-input me-2" style="background-color: var(--input-bg); border-color: var(--card-border);" />
+                <label asp-for="RememberMe" class="form-label mb-0" style="cursor: pointer;">Remember me</label>
+            </div>
+
+            <button type="submit" class="btn-primary-custom" id="submitBtn">
+                <span>Sign In</span>
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <p>New here? <a asp-action="Register" class="auth-link">Create an account</a></p>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const passwordInput = document.getElementById('passwordInput');
+            const passwordToggle = document.getElementById('passwordToggle');
+            const submitBtn = document.getElementById('submitBtn');
+            const loginForm = document.getElementById('loginForm');
+
+            // Password Toggle Logic
+            passwordToggle.addEventListener('click', () => {
+                const isPassword = passwordInput.type === 'password';
+                passwordInput.type = isPassword ? 'text' : 'password';
+                passwordToggle.innerHTML = isPassword 
+                    ? '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>'
+                    : '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+            });
+
+            // Loading State on Submit
+            loginForm.addEventListener('submit', (e) => {
+                if ($(loginForm).valid()) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Signing in...';
+                }
+            });
+
+            // Input Focus Effects
+            document.querySelectorAll('.form-control-custom').forEach(input => {
+                input.addEventListener('focus', () => {
+                    input.parentElement.querySelector('.form-label').style.color = 'var(--primary)';
+                });
+                input.addEventListener('blur', () => {
+                    input.parentElement.querySelector('.form-label').style.color = 'var(--text-muted)';
+                });
+            });
+        });
+    </script>
+}

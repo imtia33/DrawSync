@@ -1,4 +1,5 @@
 using DrawSync.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 
@@ -21,6 +22,12 @@ namespace DrawSync.Controllers
         public IActionResult Privacy()
         {
             return View();
+        }
+
+        [Authorize(Roles = "Admin")]
+        public IActionResult AdminOnly()
+        {
+            return Content("Only admins can see this!");
         }
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

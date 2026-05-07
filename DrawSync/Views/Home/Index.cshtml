@@ -1,8 +1,125 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@{
+    ViewData["Title"] = "Creative Collaboration";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<canvas id="particleCanvas" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none;"></canvas>
+
+<div class="d-flex align-items-center justify-content-center" style="min-height: 80vh;">
+    <div class="text-center">
+        <h1 id="revealTitle" class="display-1 fw-bold mb-6" style="font-family: 'Syncopate', sans-serif; letter-spacing: -4px; line-height: 0.9; opacity: 0;">
+            DRAW<br/><span style="color: var(--primary)">SYNC</span>
+        </h1>
+        <p class="text-muted mb-8" style="max-width: 500px; margin: 0 auto; font-size: 1.1rem; line-height: 1.6; animation: fadeIn 1s ease 1s forwards; opacity: 0;">
+            The real-time collaborative canvas for modern teams. Simple. Fast. Powerful.
+        </p>
+        
+        <div class="d-flex flex-column gap-3 align-items-center mt-5">
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <a href="#" class="btn-primary-custom px-5">Dashboard</a>
+            }
+            else
+            {
+                <a asp-controller="Auth" asp-action="Register" class="btn-primary-custom px-5">Try for Free</a>
+                <a asp-controller="Auth" asp-action="Login" class="btn-outline-custom px-5">Sign In</a>
+            }
+        </div>
+    </div>
 </div>
+
+@section Scripts {
+    <style>
+        @@keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @@keyframes reveal {
+            0% { filter: blur(10px); opacity: 0; transform: scale(0.9); }
+            100% { filter: blur(0); opacity: 1; transform: scale(1); }
+        }
+        .reveal-char {
+            display: inline-block;
+            animation: reveal 0.8s cubic-bezier(0.77, 0, 0.175, 1) forwards;
+        }
+    </style>
+    <script>
+        // Particle Canvas Logic
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.size = Math.random() * 2;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+            }
+            draw() {
+                ctx.fillStyle = 'rgba(99, 102, 241, 0.4)';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            resize();
+            particles = Array.from({ length: 100 }, () => new Particle());
+            animate();
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+
+        // Title Reveal Logic
+        function initReveal() {
+            const title = document.getElementById('revealTitle');
+            const text = "DRAWSYNC";
+            title.innerHTML = '';
+            title.style.opacity = '1';
+
+            [...text].forEach((char, i) => {
+                const span = document.createElement('span');
+                span.textContent = char;
+                span.className = 'reveal-char';
+                span.style.animationDelay = `${i * 0.1}s`;
+                if (i >= 4) span.style.color = 'var(--primary)';
+                if (i === 4) title.appendChild(document.createElement('br'));
+                title.appendChild(span);
+            });
+        }
+
+        // Parallax Effect
+        window.addEventListener('mousemove', (e) => {
+            const x = (e.clientX / window.innerWidth - 0.5) * 20;
+            const y = (e.clientY / window.innerHeight - 0.5) * 20;
+            const title = document.getElementById('revealTitle');
+            if (title) {
+                title.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+            }
+        });
+
+        window.addEventListener('resize', resize);
+        initParticles();
+        setTimeout(initReveal, 500);
+    </script>
+}
