@@ -1,0 +1,66 @@
+@model DrawSync.Models.ViewModels.ProfileViewModel
+@{
+    ViewData["Title"] = "My Profile";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+                    <i class="bi bi-check-circle-fill me-2"></i> @TempData["SuccessMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
+            <div class="card border-0 shadow-lg overflow-hidden" style="border-radius: 20px;">
+                <div class="card-header bg-primary py-5 text-center text-white position-relative">
+                    <div class="position-absolute top-100 start-50 translate-middle">
+                        <div class="rounded-circle bg-white p-1 shadow">
+                            <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white" style="width: 100px; height: 100px; font-size: 3rem;">
+                                @Model.Name[0].ToString().ToUpper()
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body pt-5 mt-4 text-center">
+                    <h2 class="fw-bold mb-1">@Model.Name</h2>
+                    <p class="text-muted mb-4">@Model.Email</p>
+
+                    <div class="row g-3 text-start mb-4">
+                        <div class="col-sm-6">
+                            <div class="p-3 bg-light rounded-3 h-100 border border-light-subtle">
+                                <label class="text-uppercase small fw-bold text-muted d-block mb-1">Active Role</label>
+                                <span class="badge @(Model.RoleName == "Admin" ? "bg-danger" : "bg-info") rounded-pill px-3 py-2">
+                                    <i class="bi @(Model.RoleName == "Admin" ? "bi-shield-lock" : "bi-person") me-1"></i> @Model.RoleName
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="p-3 bg-light rounded-3 h-100 border border-light-subtle">
+                                <label class="text-uppercase small fw-bold text-muted d-block mb-1">Member Since</label>
+                                <div class="fw-medium">@Model.CreatedAt.ToString("MMMM dd, yyyy")</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+                        <a asp-action="Edit" class="btn btn-primary px-5 py-2 rounded-pill shadow-sm">
+                            <i class="bi bi-pencil-square me-2"></i> Edit Profile
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 text-center text-muted small">
+                <p><i class="bi bi-lock-fill me-1"></i> Protected by Row-Level Security (RLS)</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card { transition: transform 0.3s ease; }
+    .card:hover { transform: translateY(-5px); }
+</style>

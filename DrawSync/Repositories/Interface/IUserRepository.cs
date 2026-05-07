@@ -6,5 +6,6 @@ namespace DrawSync.Repositories.Interface
     public interface IUserRepository : IBaseRepository<User>
     {
         Task<User?> GetByEmailAsync(string email);
+        Task<User?> GetProfileAsync(int id);
     }
 }
