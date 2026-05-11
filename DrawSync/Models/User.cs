@@ -1,16 +1,24 @@
 using System;
 
+using Newtonsoft.Json;
+
 namespace DrawSync.Models
 {
     public class User
     {
-        public int Id { get; set; }
+        [JsonProperty("$id")]
+        public string? Id { get; set; }
+        
+        [JsonProperty("name")]
         public string Name { get; set; } = null!;
+        
+        [JsonProperty("email")]
         public string Email { get; set; } = null!;
-        public string PasswordHash { get; set; } = null!;
-        public int RoleId { get; set; }
-        public Role Role { get; set; } = null!;
-        public DateTime CreatedAt { get; set; }
-        public bool IsActive { get; set; }
+        
+        [JsonProperty("$createdAt")]
+        public string CreatedAt { get; set; } = null!;
+
+        [JsonProperty("$updatedAt")]
+        public string UpdatedAt { get; set; } = null!;
     }
 }

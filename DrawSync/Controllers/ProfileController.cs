@@ -5,6 +5,8 @@ using DrawSync.UnitOfWork.Interface;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Appwrite;
+using Appwrite.Services;
 
 namespace DrawSync.Controllers
 {
@@ -12,12 +14,12 @@ namespace DrawSync.Controllers
     public class ProfileController : Controller
     {
         private readonly IUnitOfWork _unitOfWork;
-        private readonly PasswordHasher<User> _passwordHasher;
+        private readonly Account _account;
 
-        public ProfileController(IUnitOfWork unitOfWork, PasswordHasher<User> passwordHasher)
+        public ProfileController(IUnitOfWork unitOfWork, Account account)
         {
             _unitOfWork = unitOfWork;
-            _passwordHasher = passwordHasher;
+            _account = account;
         }
 
         public async Task<IActionResult> Index()
@@ -25,22 +27,22 @@ namespace DrawSync.Controllers
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userIdStr)) return RedirectToAction("Login", "Auth");
 
-            var userId = int.Parse(userIdStr);
-            var user = await _unitOfWork.Users.GetProfileAsync(userId);
+            var user = await _unitOfWork.Users.GetProfileAsync(userIdStr);
 
             if (user == null)
             {
-                // If RLS is working, trying to access another ID would return null.
-                // But here we are using the ID from the claim.
-                return NotFound("Profile not found or access denied by RLS.");
+                return NotFound("Profile not found.");
             }
+
+            var account = await _account.Get();
+            var role = account.Labels.Contains("admin") ? "Admin" : "User";
 
             var model = new ProfileViewModel
             {
                 Name = user.Name,
                 Email = user.Email,
-                RoleName = user.Role.Name,
-                CreatedAt = user.CreatedAt
+                RoleName = role,
+                CreatedAt = DateTime.TryParse(user.CreatedAt, out var dt) ? dt : DateTime.MinValue
             };
 
             return View(model);
@@ -52,8 +54,7 @@ namespace DrawSync.Controllers
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userIdStr)) return RedirectToAction("Login", "Auth");
 
-            var userId = int.Parse(userIdStr);
-            var user = await _unitOfWork.Users.GetByIdAsync(userId);
+            var user = await _unitOfWork.Users.GetByIdAsync(userIdStr);
 
             if (user == null) return NotFound();
 
@@ -74,15 +75,14 @@ namespace DrawSync.Controllers
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userIdStr)) return RedirectToAction("Login", "Auth");
 
-            var userId = int.Parse(userIdStr);
-            var user = await _unitOfWork.Users.GetByIdAsync(userId);
+            var user = await _unitOfWork.Users.GetByIdAsync(userIdStr);
 
             if (user == null) return NotFound();
 
-            // Update Name
+            // Update Name in Appwrite Table
             user.Name = model.Name;
 
-            // Password Update Logic
+            // Password Update Logic (via Account)
             if (!string.IsNullOrEmpty(model.NewPassword))
             {
                 if (string.IsNullOrEmpty(model.CurrentPassword))
@@ -91,17 +91,32 @@ namespace DrawSync.Controllers
                     return View(model);
                 }
 
-                var verificationResult = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, model.CurrentPassword);
-                if (verificationResult == PasswordVerificationResult.Failed)
+                try
                 {
-                    ModelState.AddModelError("CurrentPassword", "The current password you entered is incorrect.");
+                    await _account.UpdatePassword(model.NewPassword, model.CurrentPassword);
+                }
+                catch (AppwriteException ex)
+                {
+                    ModelState.AddModelError("CurrentPassword", "Password update failed: " + ex.Message);
                     return View(model);
                 }
-
-                user.PasswordHash = _passwordHasher.HashPassword(user, model.NewPassword);
             }
 
-            _unitOfWork.Users.Update(user);
+            // Update Name in Account as well
+            if (user.Name != model.Name)
+            {
+                try
+                {
+                    await _account.UpdateName(model.Name);
+                }
+                catch (AppwriteException ex)
+                {
+                    ModelState.AddModelError("Name", "Name update failed: " + ex.Message);
+                    return View(model);
+                }
+            }
+
+            await _unitOfWork.Users.UpdateAsync(userIdStr, user);
             await _unitOfWork.SaveChangesAsync();
 
             TempData["SuccessMessage"] = "Profile updated successfully!";

@@ -1,27 +1,40 @@
 using DrawSync.Models;
 using DrawSync.Repositories.Interface;
-using DrawSync.Data;
-using Microsoft.EntityFrameworkCore;
+using Appwrite;
+using Appwrite.Services;
+using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace DrawSync.Repositories.Application
 {
     public class UserRepository : BaseRepository<User>, IUserRepository
     {
-        public UserRepository(ApplicationDbContext context) : base(context)
+        public UserRepository(TablesDB tables, IConfiguration configuration) 
+            : base(tables, configuration, configuration["Appwrite:Tables:Users"]!)
         {
         }
 
         public async Task<User?> GetByEmailAsync(string email)
         {
-            return await _dbSet.Include(u => u.Role)
-                               .FirstOrDefaultAsync(u => u.Email == email);
+            var result = await _tables.ListRows(
+                databaseId: _databaseId,
+                tableId: _tableId,
+                queries: new List<string> { Query.Equal("email", email) }
+            );
+
+            var row = result.Rows.FirstOrDefault();
+            if (row == null || row.Data == null) return null;
+
+            var json = JsonConvert.SerializeObject(row.Data);
+            return JsonConvert.DeserializeObject<User>(json);
         }
 
-        public async Task<User?> GetProfileAsync(int id)
+        public async Task<User?> GetProfileAsync(string id)
         {
-            return await _dbSet.Include(u => u.Role)
-                               .FirstOrDefaultAsync(u => u.Id == id);
+            return await GetByIdAsync(id);
         }
     }
 }

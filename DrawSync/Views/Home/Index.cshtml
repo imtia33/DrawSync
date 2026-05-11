@@ -17,6 +17,11 @@
             @if (User.Identity?.IsAuthenticated == true)
             {
                 <a href="#" class="btn-primary-custom px-5">Dashboard</a>
+                
+                <div class="mt-4 p-3 border rounded text-start bg-dark text-success" style="max-width: 600px; width: 100%; font-family: 'Consolas', monospace; font-size: 0.75rem; overflow-x: auto;">
+                    <h6 class="mb-2 fw-bold text-uppercase text-white-50" style="font-size: 0.7rem;">Appwrite Response Log</h6>
+                    <pre class="m-0" style="color: inherit; background: transparent; border: none;">@ViewBag.RawApiResponse</pre>
+                </div>
             }
             else
             {

@@ -1,10 +1,10 @@
-using DrawSync.Data;
+using Appwrite;
+using Appwrite.Services;
 using DrawSync.Models;
 using DrawSync.Repositories.Interface;
 using DrawSync.UnitOfWork.Interface;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,27 +13,24 @@ builder.Services.AddControllersWithViews();
 
 // Add HttpContextAccessor
 builder.Services.AddHttpContextAccessor();
-// Register SessionContextInterceptor
-builder.Services.AddScoped<SessionContextInterceptor>();
 
-// Configure EF Core
-builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
+// Configure Appwrite Client
+builder.Services.AddSingleton(sp =>
 {
-    var interceptor = serviceProvider.GetRequiredService<SessionContextInterceptor>();
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
-        sqlServerOptionsAction: sqlOptions =>
-        {
-            sqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(30),
-                errorNumbersToAdd: null);
-        })
-    .AddInterceptors(interceptor);
+    var config = sp.GetRequiredService<IConfiguration>();
+    var client = new Client();
+    client
+        .SetEndpoint(config["Appwrite:Endpoint"]!)
+        .SetProject(config["Appwrite:Project"]!);
+    return client;
 });
+
+// Register Appwrite Services
+builder.Services.AddScoped(sp => new TablesDB(sp.GetRequiredService<Client>()));
+builder.Services.AddScoped(sp => new Account(sp.GetRequiredService<Client>()));
 
 // Register Repository Layer
 builder.Services.AddScoped<IUserRepository, DrawSync.Repositories.Application.UserRepository>();
-builder.Services.AddScoped<IRoleRepository, DrawSync.Repositories.Application.RoleRepository>();
 
 // Register Unit of Work
 builder.Services.AddScoped<DrawSync.UnitOfWork.Interface.IUnitOfWork, DrawSync.UnitOfWork.Application.UnitOfWork>();
@@ -52,9 +49,6 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
         options.SlidingExpiration = true;
     });
-
-// Register PasswordHasher
-builder.Services.AddScoped<PasswordHasher<User>>();
 
 var app = builder.Build();
 
