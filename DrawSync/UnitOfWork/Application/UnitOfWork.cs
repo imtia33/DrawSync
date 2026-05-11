@@ -1,4 +1,3 @@
-using DrawSync.Data;
 using DrawSync.Repositories.Interface;
 using DrawSync.UnitOfWork.Interface;
 using System.Threading.Tasks;
@@ -7,25 +6,22 @@ namespace DrawSync.UnitOfWork.Application
 {
     public class UnitOfWork : IUnitOfWork
     {
-        private readonly ApplicationDbContext _context;
-
-        public UnitOfWork(
-            ApplicationDbContext context,
-            IUserRepository userRepository,
-            IRoleRepository roleRepository)
+        public UnitOfWork(IUserRepository userRepository)
         {
-            _context = context;
             Users = userRepository;
-            Roles = roleRepository;
         }
 
         public IUserRepository Users { get; }
-        public IRoleRepository Roles { get; }
 
-        public async Task<int> SaveChangesAsync() =>
-            await _context.SaveChangesAsync();
+        public async Task SaveChangesAsync()
+        {
+            // Appwrite operations are immediate in our BaseRepository, 
+            // but we keep this for consistency in the UoW pattern.
+            await Task.CompletedTask;
+        }
 
-        public void Dispose() =>
-            _context.Dispose();
+        public void Dispose()
+        {
+        }
     }
 }

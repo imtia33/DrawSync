@@ -14,6 +14,12 @@
 
         <form asp-action="Login" method="post" id="loginForm">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            @if (TempData["LoginError"] != null)
+            {
+                <div class="alert alert-danger" style="margin-bottom: 20px; font-size: 0.9rem; word-break: break-all;">
+                    @TempData["LoginError"]
+                </div>
+            }
             
             <div class="form-group">
                 <label asp-for="Email" class="form-label">Email Address</label>
