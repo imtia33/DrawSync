@@ -2,128 +2,278 @@
 
 ## Overview
 
-This document outlines the phased implementation plan for DrawSync, broken into milestones with concrete deliverables and estimated effort.
+This document outlines a **5-6 week consolidated implementation plan** for DrawSync MVP. The plan combines foundation, real-time collaboration, and integration testing into a focused delivery timeline. Advanced features (cloud backup, full load testing, UI polish, map canvas) are deferred to Phase 2.
 
 ---
 
-## Phase 1: Foundation & Authentication (Weeks 1-3)
+## Phase 1: Backend Foundation & APIs (Weeks 1-2)
 
 ### Goal
-Set up Appwrite authentication, team/membership management, and basic API structure.
+Set up Appwrite tables, REST APIs for teams/boards, and basic websocket infrastructure.
 
 ### Deliverables
 
-#### 1.1 Appwrite Setup & Teams Table
-- **Task**: Create Appwrite database schema (teams, team_members, users tables)
+#### 1.1 Appwrite Setup & Tables
+- **Task**: Create core Appwrite TablesDB schema
+- **Tables**:
+  - `users` - id, name, email, avatarUrl
+  - `teams` - id, name, planTier, boardLimit (1 for Free / 5 for Pro), seatLimit (3 for Free / 15 for Pro)
+  - `team_members` - id, teamID, userID, role (admin/member/viewer)
+  - `boards` - id, teamID, name, type (whiteboard), archived, createdBy, createdAt
 - **Acceptance Criteria**:
-  - Teams table created with: name, planTier, boardLimit, seatLimit, extraSeatPacks, backupEnabled
-  - Team_members table with: teamID, userID, role (admin/member/viewer)
-  - Users table linked to Appwrite Auth
-- **Dependencies**: Appwrite project already set up
-- **Estimate**: 3 days
-- **Owner**: Backend
-
-#### 1.2 Team API Endpoints
-- **Task**: Implement REST endpoints for team CRUD and member management
-- **Endpoints**:
-  - `POST /api/teams` - Create team (user becomes admin)
-  - `GET /api/teams` - List teams for current user
-  - `GET /api/teams/{teamId}` - Get team details + plan info
-  - `POST /api/teams/{teamId}/members` - Invite member (admin only)
-  - `DELETE /api/teams/{teamId}/members/{userId}` - Remove member
-  - `PATCH /api/teams/{teamId}/members/{userId}` - Change role
-- **Acceptance Criteria**:
-  - All endpoints enforce authentication
-  - Plan tier checked for entitlements (board/seat limits)
-  - Appwrite RLS used for multi-tenant isolation
-- **Estimate**: 5 days
-- **Owner**: Backend
-
-#### 1.3 Plan Enforcement Service
-- **Task**: Create PlanService to check board/seat limits
-- **Methods**:
-  - `CanCreateBoard(teamId)` - Returns true if boardCount < limit
-  - `CanAddMember(teamId)` - Returns true if memberCount < limit
-  - `GetPlanLimits(teamId)` - Returns { boardLimit, seatLimit }
+  - All tables created with RLS policies
+  - Multi-tenant isolation enforced
+  - User can list only their own teams/boards
 - **Estimate**: 2 days
 - **Owner**: Backend
 
-### Milestone Acceptance
-- [ ] All team endpoints tested and working
-- [ ] PlanService enforces Free (1 board, 3 members) and Pro (5 boards, 15 members) limits
-- [ ] Multi-tenant isolation verified (user A cannot see team B's data)
-
----
-
-## Phase 2: Boards & Metadata (Weeks 2-4)
-
-### Goal
-Implement board CRUD, persistence in Appwrite, and local browser DB setup.
-
-### Deliverables
-
-#### 2.1 Boards Table & API
-- **Task**: Create Appwrite boards table and REST API
-- **Appwrite Schema**:
-  - `boards` table: teamID, name, type (whiteboard/map), archived, createdBy, createdAt
-- **Endpoints**:
-  - `POST /api/teams/{teamId}/boards` - Create board (enforces limit)
-  - `GET /api/teams/{teamId}/boards` - List boards (paginated)
-  - `GET /api/teams/{teamId}/boards/{boardId}` - Get board metadata
-  - `PATCH /api/teams/{teamId}/boards/{boardId}` - Update name/archive status
-  - `DELETE /api/teams/{teamId}/boards/{boardId}` - Delete board
+#### 1.2 Team & Board REST APIs
+- **Task**: Implement core REST endpoints
+- **Team Endpoints**:
+  - `POST /api/teams` - Create team
+  - `GET /api/teams` - List user's teams
+  - `POST /api/teams/{teamId}/members` - Invite (admin only)
+  - `DELETE /api/teams/{teamId}/members/{userId}` - Remove member
+- **Board Endpoints**:
+  - `POST /api/teams/{teamId}/boards` - Create board (enforces plan limit)
+  - `GET /api/teams/{teamId}/boards` - List boards
+  - `PATCH /api/teams/{teamId}/boards/{boardId}` - Update/archive
 - **Acceptance Criteria**:
-  - Board count checked against plan limit before creation
-  - Archived boards return 403 on edit attempts
-  - Delete cascades to layers, strokes in local DB (client-side)
+  - Plan limits enforced (1 board/3 seats for Free, 5/15 for Pro)
+  - RLS verified (user A cannot access team B's data)
+  - All endpoints require authentication
 - **Estimate**: 4 days
 - **Owner**: Backend
 
-#### 2.2 IndexedDB Setup (Client)
+#### 1.3 Basic Websocket Server
+- **Task**: Set up websocket infrastructure in ASP.NET Core
+- **Components**:
+  - WebsocketManager class (track sessions per board)
+  - WebsocketClient class (per-connection state)
+  - `/ws` endpoint with token validation
+- **Acceptance Criteria**:
+  - Endpoint accepts connections at `/ws?token=X&boardId=Y`
+  - Token validated before connection accepted
+  - Connection stored in session manager
+  - Heartbeat sent every 5s
+- **Estimate**: 3 days
+- **Owner**: Backend
+
+- [ ] Plan limits enforced (Free: 1 board/3 seats; Pro: 5 boards/15 seats)
+- [ ] Websocket endpoint accepts connections and sends heartbeat
+
+---
+## Phase 2: Real-Time Synchronization & Permission Model (Weeks 2-4)
+
+### Goal
+### Deliverables
+
+- **Events**:
+  - `stroke` (client→server) - New stroke: {id, points[], color, width, createdBy}
+  - `strokeUpdate` (client→server) - Update stroke (owner-only): {strokeId, color, width}
+  - `strokeDelete` (client→server) - Delete stroke (owner-only): {strokeId}
+  - `stroke` (server→all) - Relay: includes createdBy
+  - `strokeDeleted` (server→all) - Broadcast delete with deletedBy
+  - `presence` (server→all) - User joined/left: {userId, userName, event}
+  - `ack` (server→sender) - Acknowledgment of successful event
+- **Acceptance Criteria**:
+  - Events serialized as JSON
+  - Server validates stroke ID before relay
+- **Estimate**: 4 days
+#### 2.2 Stroke Permission Validation
+- **Task**: Enforce owner-only edit/delete at server
+- **Logic**:
+  - On `strokeUpdate`: check sender.id == stroke.createdBy; error if mismatch
+  - On `stroke` create: set createdBy = sender.id automatically
+  - Return `{ type: "error", code: "PERMISSION_DENIED", message: "You can only edit your own strokes" }`
+- **Acceptance Criteria**:
+  - User can edit/delete own strokes
+  - Audit log records failed attempts
+- **Estimate**: 2 days
+- **Task**: Set up browser local database schema and websocket client
+  - `boards` - id, teamId, name, createdAt
+  - `strokes` - id, boardId, points, color, width, createdBy, createdAt, updatedAt
+  - `symbols` - id, boardId, type, x, y (future use)
+  - `backups` - id, boardId, payload, createdAt (for versioning)
+- **Client Library** (`ws-client.ts`):
+  - `connect(boardId, token)` - Open websocket
+  - `send(event)` - Send event
+  - `on(eventType, handler)` - Listen for events
+  - `disconnect()` - Close gracefully
+- **Acceptance Criteria**:
+  - IndexedDB initialized on first visit to board
+  - Client connects and receives snapshot
+  - Events queued during disconnect; sent on reconnect
+  - No duplicate events after reconnect
+- **Estimate**: 4 days
+- **Owner**: Frontend
+
+#### 2.4 Connection Management & Recovery
+- **Features**:
+  - Heartbeat every 5s; timeout at 30s
+  - Graceful reconnection with event buffer
+  - Send snapshot + pending events on reconnect
+  - Client auto-reconnects within 10s of network drop
+  - No events lost during brief disconnect
+- **Estimate**: 2 days
+- **Owner**: Backend + Frontend
+
+### Milestone Acceptance
+- [ ] Client A sends stroke; Client B receives within 50ms
+- [ ] Client A cannot edit/delete Client B's stroke (permission denied)
+- [ ] Client A disconnects; reconnects and receives buffered events
+- [ ] Full snapshot sent on new client join
+
+## Phase 3: Canvas UI & Drawing (Weeks 3-5)
+Implement interactive canvas rendering, stroke persistence, and stroke ownership UI.
+
+### Deliverables
+
+- **Task**: Render whiteboard canvas with pan/zoom
+- **Features**:
+  - Infinite 2D canvas (flat, no layers)
+  - Pan (drag) and zoom (scroll/pinch)
+  - Render strokes from local IndexedDB
+  - Display creator name/label on strokes
+- **Acceptance Criteria**:
+  - Canvas loads and renders strokes from IndexedDB
+  - Pan/zoom works smoothly with touch support
+  - Brush strokes drawn in real-time as user draws
+- **Estimate**: 5 days
+- **Owner**: Frontend
+- **Task**: Restrict editing/deleting to owners; visual distinction
+- **Features**:
+  - Own strokes: normal opacity, highlight on hover, show edit/delete buttons
+  - Others' strokes: dimmed (~90% opacity or grayed), read-only
+  - Attempt to edit non-owned stroke: show tooltip "You can only edit your own strokes"
+  - Client prevents selection of non-owned strokes before sending to server
+- **Acceptance Criteria**:
+  - Own strokes selectable and editable
+  - Creator name displayed on all strokes
+  - Server validates permissions (defense in depth)
+- **Flow**:
+  - On stroke end, save to IndexedDB strokes table (createdBy = currentUser.id)
+  - Emit `stroke` event to websocket (async, non-blocking)
+  - UI updates immediately from local DB
+  - On confirmation (ack), mark as synced
+- **Acceptance Criteria**:
+  - Stroke persisted to IndexedDB immediately
+  - Stroke visible on canvas before websocket confirmation
+  - Stroke sent to websocket asynchronously
+  - UI does not block on network latency
+- **Owner**: Frontend
+
+#### 3.4 Incoming Stroke Application & Presence
+- **Task**: Render incoming strokes and show other users' cursors
+- **Features**:
+  - Insert into local IndexedDB (check createdBy, render with ownership styling)
+  - Render stroke on canvas with creator label
+  - Cursor updates every ~66ms (15 fps) show live cursor of other users
+  - Name label above cursor; remove on disconnect
+- **Acceptance Criteria**:
+  - Other users' cursors visible and smooth
+  - Cursor removed 1s after user disconnect
+- **Owner**: Frontend
+
+#### 3.5 Basic Team/Board UI
+- **Task**: Create simple navigation and board selector
+- **UI**:
+  - "New Board" button (enforces plan limit)
+  - Board view with canvas
+  - Team members list with count
+  - Simple styling (no animations yet)
+- **Acceptance Criteria**:
+  - Board creation blocked if over plan limit
+  - Members count displayed
+
+### Milestone Acceptance
+- [ ] Two users can draw simultaneously on same board
+- [ ] Both see each other's strokes within 50ms
+- [ ] Both see each other's cursors
+- [ ] Non-owned strokes appear dimmed/read-only
+- [ ] Strokes persisted locally and synced via websocket
+- [ ] Disconnects handled gracefully
+
+---
+
+### Goal
+### Deliverables
+
+#### 4.1 Integration Testing
+- **Task**: Test complete user workflows
+- **Scenarios**:
+  - Two users on same board: User A draws, User B sees stroke, User B cannot delete User A's stroke
+  - Permission denied on edit/delete non-owned stroke (error message shown)
+  - Offline handling: User disconnects, buffers event, reconnects, event synced
+  - Backup → Restore (basic: export IndexedDB to file, import)
+- **Acceptance Criteria**:
+  - Permission checks enforced end-to-end
+  - Error messages clear and actionable
+
+#### 4.2 Scalability Testing (Baseline)
+- **Task**: Test concurrent users (baseline for MVP, not full 1000)
+- **Scenarios**:
+  - 100-200 concurrent websocket connections
+  - Each user draws strokes every 2-5 seconds
+  - Measure latency p95, memory, CPU
+- **Acceptance Criteria**:
+  - No connection failures below 200 concurrent
+  - CPU < 70%
+  - Plan for Phase 2 scaling: load balancer + Redis pub/sub
+  - Reconnection edge cases (fast reconnect, slow reconnect, repeated timeouts)
+  - Browser compatibility (Chrome, Firefox, Safari baseline)
+- **Acceptance Criteria**:
+  - No crashes after 1 hour of active use
+  - Reconnects work reliably
+  - No IndexedDB errors on normal usage
+  - Basic browser compatibility verified
+- **Estimate**: 3 days
+- **Owner**: Both
+
+- **Activities**:
+  - Set up staging environment on Azure/AWS
+  - Create deployment runbook
+  - API documentation (Swagger auto-generated or manual)
+  - User guide (getting started: create team, invite member, draw)
+- **Acceptance Criteria**:
+  - Staging environment mirrors production
+  - Deploy automated or clear manual steps
+  - Docs cover basic setup and usage
+- **Owner**: Backend + DevOps
+
+- [ ] 100-200 concurrent users supported (baseline)
+- [ ] No crashes or data loss
+- [ ] Deployment runbook documented
+- [ ] Ready for beta launch
+---
+
+## Timeline Summary (5-6 Weeks to MVP)
 - **Task**: Design and initialize IndexedDB schema for local persistence
 - **Stores**: boards, layers, strokes, symbols, backups (see architecture doc)
-- **Acceptance Criteria**:
-  - IndexedDB "DrawSync" database created on first app load
   - Schema versioning implemented (for future migrations)
   - All stores support async read/write
-  - Compound indices created for fast queries (boardId, layerId, etc.)
-- **Estimate**: 3 days
 - **Owner**: Frontend
 
 #### 2.3 Board Metadata Sync (Client)
 - **Task**: Sync boards/layers from Appwrite to local IndexedDB on login
-- **Flow**:
   - On login, fetch teams from Appwrite
   - For each team, fetch boards + layers
   - Insert into local IndexedDB
   - Set up periodic refresh (every 5 minutes or on app focus)
-- **Acceptance Criteria**:
-  - Boards appear in UI after login
   - Adding board via API reflects in local DB within 30s
   - Archiving board disables editing in UI
-- **Estimate**: 3 days
-- **Owner**: Frontend
 
 ### Milestone Acceptance
 - [ ] User can create board (within plan limit)
 - [ ] Board appears in local IndexedDB
 - [ ] Boards synced from Appwrite to local DB
-- [ ] Archived boards cannot be edited
 
 ---
 
 ## Phase 3: Websocket Server (Weeks 4-6)
-
-### Goal
 Implement in-process websocket server for real-time collaboration.
 
-### Deliverables
-
-#### 3.1 Websocket Infrastructure
-- **Task**: Implement websocket server in ASP.NET Core
-- **Components**:
   - WebsocketSession class (manages board session state)
-  - WebsocketClient class (per-connection state)
   - Event buffer (last 1000 events per session)
   - Connection manager (track active sessions)
 - **Acceptance Criteria**:
@@ -135,51 +285,27 @@ Implement in-process websocket server for real-time collaboration.
 - **Owner**: Backend
 
 #### 3.2 Event Serialization & Broadcasting
-- **Task**: Implement event protocol (stroke, layerCreate, cursorMove, etc.)
+- **Task**: Implement event protocol (stroke, strokeUpdate, strokeDelete, cursorMove, etc.)
 - **Events to implement**:
-  - `stroke` - New stroke from client
-  - `strokeUpdate` - Update existing stroke
-  - `cursorMove` - Presence indicator
-  - `layerCreate` - New layer
-  - `layerDelete` - Delete layer
-  - `presence` - Join/leave broadcast
   - `snapshot` - Full board state on join
-  - `ack` - Acknowledgment
 - **Acceptance Criteria**:
   - Events serialized as JSON with schema version
   - Broadcast to all clients in session within 50ms
   - Server validates event before relay
+  - Permission check enforced before relay (owner-only for mutations)
   - ACK sent to sender
 - **Estimate**: 5 days
 - **Owner**: Backend
 
-#### 3.3 Connection Management & Recovery
 - **Task**: Implement reconnection & event buffer logic
 - **Features**:
   - Detect disconnection (no heartbeat > 30s)
   - Remove client from session gracefully
-  - Buffer events for reconnecting clients
-  - Send snapshot + pending events on reconnect
-- **Acceptance Criteria**:
-  - Client reconnects within 10s after network drop
-  - No events lost (buffered or resent)
-  - Snapshot sent to new joiners
-  - Memory usage bounded (1000 events max per session)
 - **Estimate**: 4 days
 - **Owner**: Backend
-
-#### 3.4 Websocket Client Library
-- **Task**: Create client-side library to handle websocket events
-- **Features**:
-  - Auto-reconnect with exponential backoff
   - Queue events during disconnection
   - Listen for incoming events
-  - Manage local optimistic updates
-- **Methods**:
-  - `connect(boardId, token)` - Start websocket
-  - `send(event)` - Send stroke/layer event
   - `on(eventType, handler)` - Listen for events
-  - `disconnect()` - Close gracefully
 - **Acceptance Criteria**:
   - Events sent successfully
   - Incoming events trigger UI updates
@@ -187,6 +313,21 @@ Implement in-process websocket server for real-time collaboration.
   - No race conditions with optimistic updates
 - **Estimate**: 3 days
 - **Owner**: Frontend
+
+#### 3.5 Stroke Permission Validation
+- **Task**: Validate ownership on strokeUpdate and strokeDelete events
+- **Features**:
+  - Check createdBy field matches sender for updates/deletes
+  - Return PERMISSION_DENIED error if mismatch
+  - Log failed permission attempts for security audit
+  - Prevent server relay of unauthorized events
+- **Acceptance Criteria**:
+  - User can update/delete own strokes
+  - User cannot update/delete others' strokes (error sent)
+  - Server does not relay unauthorized mutations
+  - Error response includes reason ("You can only edit your own strokes")
+- **Estimate**: 2 days
+- **Owner**: Backend
 
 ### Milestone Acceptance
 - [ ] Two clients connect to same board
@@ -210,41 +351,57 @@ Implement interactive canvas and drawing UI.
   - Infinite 2D canvas (whiteboard)
   - OSM tile layer (map)
   - Pan (drag) and zoom (scroll/pinch)
-  - Layer visibility toggle
   - Freehand drawing with brush stroke
+  - Display creator name/label on strokes
 - **Acceptance Criteria**:
   - Canvas renders strokes from local DB
   - Pan/zoom works smoothly
   - Brush strokes drawn in real-time
-  - Layers can be toggled on/off
+  - Creator name visible on hover or next to stroke
 - **Estimate**: 6 days
 - **Owner**: Frontend
 
-#### 4.2 Local Stroke Persistence
+#### 4.2 Stroke Ownership & Permission UI
+- **Task**: Render strokes differently based on ownership; prevent editing/deleting others' strokes
+- **Features**:
+  - Own strokes: normal opacity, highlight on hover, show edit/delete buttons
+  - Others' strokes: dimmed/grayed out (~90% opacity), read-only
+  - On click attempt to delete non-owned stroke: show tooltip "You can only delete your own strokes"
+  - On click attempt to edit non-owned stroke: show tooltip "You can only edit your own strokes"
+- **Acceptance Criteria**:
+  - Own strokes are selectable and editable
+  - Non-owned strokes are not selectable
+  - Visual distinction clear (color/opacity difference)
+  - Tooltips appear on blocked interactions
+  - Creator name displayed
+- **Estimate**: 2 days
+- **Owner**: Frontend
+
+#### 4.3 Local Stroke Persistence
 - **Task**: Save strokes to local IndexedDB as they are drawn
 - **Flow**:
   - User draws stroke on canvas
-  - On stroke end, save to IndexedDB strokes table
+  - On stroke end, save to IndexedDB strokes table (with createdBy = currentUser.id)
   - Emit stroke event to websocket (async)
   - UI updates from local DB
 - **Acceptance Criteria**:
-  - Stroke persisted to IndexedDB
+  - Stroke persisted to IndexedDB with createdBy field
   - Stroke appears in local DB after save
   - Stroke sent to websocket
   - UI does not block on save
 - **Estimate**: 3 days
 - **Owner**: Frontend
 
-#### 4.3 Incoming Stroke Application
+#### 4.4 Incoming Stroke Application
 - **Task**: Apply incoming websocket strokes to local DB and canvas
 - **Flow**:
-  - Receive stroke event from websocket
+  - Receive stroke event from websocket (with createdBy field)
   - Insert into local IndexedDB (if not from self)
-  - Render stroke on canvas
+  - Render stroke on canvas based on ownership
   - Update canvas view
 - **Acceptance Criteria**:
   - Strokes from other clients appear on canvas
-  - Local DB updated with remote strokes
+  - Local DB updated with remote strokes (including createdBy)
   - No duplicate rendering (optimization)
   - Latency < 100ms p95
 - **Estimate**: 3 days
@@ -268,8 +425,9 @@ Implement interactive canvas and drawing UI.
 ### Milestone Acceptance
 - [ ] Two users can draw simultaneously
 - [ ] Both see each other's strokes within 100ms
-- [ ] Strokes persisted locally
-- [ ] Layers can be created and toggled
+- [ ] Strokes persisted locally with createdBy field
+- [ ] Users can only edit/delete their own strokes
+- [ ] Non-owned strokes appear read-only/dimmed
 - [ ] Cursors visible for both users
 
 ---
@@ -381,10 +539,15 @@ Comprehensive testing and load testing to validate 1000 concurrent user capabili
   - Create team → Create board → Join → Draw → Save
   - Multi-client drawing → Verify consistency
   - Backup → Restore → Verify data
+  - User A draws stroke → User B cannot edit/delete (permission denied)
+  - User A tries to delete User B's stroke → Error sent
+  - Permission error triggers UI tooltip in frontend
 - **Acceptance Criteria**:
   - All workflows pass
   - No data loss
   - Consistency verified across clients
+  - Permission checks enforce owner-only edit/delete
+  - Non-owner mutations rejected with proper error
 - **Estimate**: 4 days
 - **Owner**: Both
 
@@ -405,168 +568,116 @@ Comprehensive testing and load testing to validate 1000 concurrent user capabili
 - **Estimate**: 4 days
 - **Owner**: Backend
 
-#### 6.4 Reliability & Recovery Tests
-- **Task**: Test connection drops, server restarts, etc.
-- **Scenarios**:
-  - Client disconnects mid-stroke
-  - Server restart (graceful drain)
-  - Client reconnects after 1 minute offline
-  - Appwrite downtime (cache local state)
-- **Acceptance Criteria**:
-  - No data loss
-  - Clients recover after restart
-  - Graceful handling of offline periods
-- **Estimate**: 3 days
-- **Owner**: Backend
-
-### Milestone Acceptance
-- [ ] Load test passes: 1000 concurrent connections, p95 < 100ms
-- [ ] All integration tests pass
-- [ ] Recovery tests pass (no data loss)
-- [ ] Performance monitoring in place
-
 ---
 
-## Phase 7: Polish & Deployment (Weeks 9-11)
-
-### Goal
-UI/UX refinement, documentation, and production deployment.
-
-### Deliverables
-
-#### 7.1 UI/UX Polish
-- **Task**: Refine UI, add animations, improve mobile support
-- **Features**:
-  - Responsive layout (mobile, tablet, desktop)
-  - Smooth animations for presence cursors
-  - Notification system (join/leave, errors)
-  - Accessibility audit (WCAG 2.1 AA)
-- **Acceptance Criteria**:
-  - UI looks polished
-  - Animations smooth (60 fps)
-  - Mobile usable
-  - Accessibility passing
-- **Estimate**: 5 days
-- **Owner**: Frontend
-
-#### 7.2 Documentation
-- **Task**: Write developer/user documentation
-- **Docs**:
-  - API documentation (Swagger/OpenAPI)
-  - Architecture guide (this doc)
-  - Deployment guide
-  - User guide (getting started)
-- **Acceptance Criteria**:
-  - All APIs documented
-  - Setup steps clear
-  - User workflows explained
-- **Estimate**: 3 days
-- **Owner**: Both
-
-#### 7.3 Deployment & Monitoring
-- **Task**: Deploy to production and set up monitoring
-- **Components**:
-  - App Insights or similar monitoring
-  - Error tracking (Sentry or similar)
-  - Logging (ELK or Application Insights)
-  - Alerting (connection count, error rate, latency)
-- **Acceptance Criteria**:
-  - App deployed to production
-  - Monitoring dashboards active
-  - Alerts configured
-  - Runbook prepared
-- **Estimate**: 3 days
-- **Owner**: DevOps/Backend
-
-#### 7.4 Performance Optimization
-- **Task**: Profile and optimize based on load test findings
-- **Focus Areas**:
-  - Websocket memory usage
-  - Event buffer cleanup
-  - Appwrite query optimization
-  - Client-side rendering performance
-- **Acceptance Criteria**:
-  - Memory stable under load
-  - Latency within target
-  - CPU usage reduced if possible
-- **Estimate**: 3 days
-- **Owner**: Backend
-
-### Milestone Acceptance
-- [ ] App deployed to production
-- [ ] Monitoring active and alerting working
-- [ ] UI polished and responsive
-- [ ] Documentation complete
-- [ ] Performance optimized
-
----
-
-## Phase 8: Beta & Feedback (Weeks 11-12)
-
-### Goal
-Beta launch with early users, collect feedback, and iterate.
-
-### Deliverables
-
-#### 8.1 Beta User Onboarding
-- **Task**: Set up beta program and onboard first users
-- **Features**:
-  - Invite beta testers
-  - Collect feedback (survey, in-app feedback)
-  - Monitor for issues
-- **Estimate**: 2 days
-- **Owner**: Product
-
-#### 8.2 Issue Triage & Fixes
-- **Task**: Prioritize and fix beta feedback issues
-- **Process**:
-  - Daily triage of reported issues
-  - P1 (critical) fixes within 24h
-  - P2 (major) fixes within 3 days
-- **Estimate**: 5 days
-- **Owner**: Both
-
-### Milestone Acceptance
-- [ ] 50+ beta users active
-- [ ] Major issues fixed
-- [ ] Positive feedback on core features
-
----
-
-## Timeline Summary
+## Timeline Summary (5-6 Weeks to MVP)
 
 | Phase | Duration | Key Deliverables |
 |---|---|---|
-| 1 | Weeks 1-3 | Auth, Teams, Plan enforcement |
-| 2 | Weeks 2-4 | Boards, IndexedDB, Metadata sync |
-| 3 | Weeks 4-6 | Websocket server, Event protocol |
-| 4 | Weeks 5-8 | Canvas, Drawing, Layer management |
-| 5 | Weeks 7-9 | Cloud backup, Restore |
-| 6 | Weeks 8-10 | Testing, Load testing |
-| 7 | Weeks 9-11 | Polish, Deployment, Monitoring |
-| 8 | Weeks 11-12 | Beta, Feedback, Iterations |
+| 1 | Weeks 1-2 | Teams API, Boards API, Websocket infrastructure |
+| 2 | Weeks 2-4 | Event protocol, Permission validation, IndexedDB client, Connection recovery |
+| 3 | Weeks 3-5 | Canvas rendering, Permission UI, Stroke sync, Presence cursors |
+| 4 | Weeks 5-6 | Integration testing, Scalability baseline (100-200 concurrent), Deployment |
 
-**Total**: ~12 weeks (3 months) to MVP with beta launch.
+**Total**: 5-6 weeks to **MVP launch with core collaboration features**
+
+**Not in MVP (Phase 2):**
+- Cloud backup (defer to Phase 5)
+- Full load testing for 1000 concurrent (defer to Phase 5; baseline 100-200 tested)
+- Map canvas (whiteboard only for MVP)
+- Advanced UI polish and animations (basic UI sufficient)
+- Full accessibility audit (basic support only)
 
 ---
 
 ## Resource Plan
 
-| Role | Weeks 1-6 | Weeks 7-12 |
-|---|---|---|
-| **Backend** | 1 FTE (websocket, API, backup) | 0.5 FTE (optimization, support) |
-| **Frontend** | 0.5 FTE (setup, structure) → 1 FTE | 1 FTE (UI/UX, testing) |
-| **DevOps** | 0.2 FTE (infrastructure) | 0.5 FTE (deployment, monitoring) |
+| Role | Weeks 1-6 |
+|---|---|
+| **Backend** | 1 FTE (APIs, websocket, permission validation, testing) |
+| **Frontend** | 1 FTE (canvas, sync, permission UI, testing) |
+| **DevOps** | 0.2-0.3 FTE (staging/deployment setup) |
 
 ---
 
-## Risk & Mitigation
+## Success Criteria for MVP
 
-| Risk | Impact | Mitigation |
-|---|---|---|
-| Websocket scaling challenges | High | Early load testing (Phase 6); consider Redis pub/sub if needed |
-| IndexedDB performance (millions of rows) | High | Implement pagination; monitor query times; SQLite migration ready |
-| Appwrite API rate limits | Medium | Monitor usage; implement caching; request quota increase |
-| Browser compatibility | Medium | Test on Chrome, Firefox, Safari, Edge; use polyfills as needed |
-| Team member coordination | Low | Daily standup; clear ownership; Slack integration for updates |
+**Functional:**
+- [ ] Users can create teams and invite members
+- [ ] Plan limits enforced (Free: 1 board/3 seats; Pro: 5 boards/15 seats)
+- [ ] Multiple users can draw simultaneously on same board
+- [ ] Strokes visible to all connected users within 50ms
+- [ ] Users can only edit/delete their own strokes
+- [ ] Permission errors handled gracefully with user feedback
+- [ ] Disconnection/reconnection works without data loss
+
+**Non-Functional:**
+- [ ] Supports 100-200 concurrent websocket connections (baseline)
+- [ ] Latency p95 < 200ms at baseline concurrency
+- [ ] IndexedDB strokes persist locally
+- [ ] Memory usage stable (no leaks)
+- [ ] Browser compatibility (Chrome, Firefox, Safari)
+
+**Security:**
+- [ ] Authentication required for all APIs and websocket
+- [ ] RLS enforced for multi-tenant isolation
+- [ ] Permission checks on stroke mutations (server-side validation)
+- [ ] No unauthorized access to other teams' data
+
+---
+
+## Key Architectural Decisions (MVP Scope)
+
+1. **Local-First Storage**: Browser IndexedDB as primary write path; Appwrite only for control plane (teams, boards, backups)
+2. **Embedded Websocket**: ASP.NET Core System.Net.WebSockets; no external service
+3. **Event-Based Sync**: Individual stroke events broadcast immediately; no full snapshots except on join
+4. **Flat Canvas**: No layers; strokes are independent entities with creator ownership
+5. **Permission Model**: Createdby field; owner-only edit/delete enforced at server
+6. **Scalability Path**: Single instance MVP; Phase 2 adds load balancer + Redis pub/sub for 1000+ users
+
+---
+
+## Phase 2 Roadmap (Post-MVP)
+
+Future enhancements planned after MVP launch:
+
+1. **Cloud Backup** (1-2 weeks)
+   - Pro-tier backup to cloud on "Save" button
+   - Version history and restore
+
+2. **Scalability** (2-3 weeks)
+   - Load balancer setup
+   - Redis pub/sub for multi-instance broadcasting
+   - Full 1000+ concurrent load testing
+
+3. **Map Canvas & Tools** (2 weeks)
+   - Map layer (OSM tiles)
+   - Advanced drawing tools (shapes, text, arrows)
+   - Layer management
+
+4. **Advanced Features** (3+ weeks)
+   - Real-time chat in board
+   - Undo/redo
+   - Templates and quick shapes
+   - Permissions (viewer-only access)
+   - Scheduled backups
+
+---
+
+## Deployment Checklist
+
+**Before MVP Launch:**
+- [ ] Staging environment mirrors production
+- [ ] All integration tests passing
+- [ ] Baseline load testing (100-200 concurrent) passing
+- [ ] Monitoring/alerting configured
+- [ ] Rollback procedure documented
+- [ ] Team trained on deployment steps
+- [ ] User documentation (setup, getting started)
+- [ ] Error tracking active (Sentry/similar)
+
+**Day 1 Post-Launch:**
+- [ ] Monitor error rates and latency
+- [ ] Respond to critical issues within 2 hours
+- [ ] Gather early user feedback
 
