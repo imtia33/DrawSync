@@ -1,0 +1,75 @@
+@model DrawSync.Models.Organization
+
+<div class="settings-section">
+    <h2>Organization Settings</h2>
+
+    <form id="settingsForm" style="max-width: 500px;">
+        <div class="form-group" style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">Organization Name</label>
+            <input type="text" id="orgName" value="@Model.Name" placeholder="Organization name" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">Organization ID</label>
+            <input type="text" value="@Model.Id" disabled style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; box-sizing: border-box;">
+            <small style="color: #666;">This cannot be changed</small>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">Created</label>
+            <input type="text" value="@Model.CreatedAt" disabled style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; box-sizing: border-box;">
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <button type="submit" class="btn-primary-custom" style="padding: 10px 20px;">Save Changes</button>
+            <button type="button" id="deleteOrgBtn" style="padding: 10px 20px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">Delete Organization</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        const orgId = '@Model.Id';
+        const apiBase = `/api/organization/${orgId}`;
+
+        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('orgName').value;
+
+            try {
+                const res = await fetch(`${apiBase}/settings`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+
+                if (res.ok) {
+                    alert('Settings saved successfully!');
+                }
+            } catch (err) {
+                alert('Failed to save settings: ' + err.message);
+            }
+        });
+
+        document.getElementById('deleteOrgBtn').addEventListener('click', () => {
+            if (confirm('Are you sure? This will permanently delete the entire organization, all drawings, and all member invitations. This cannot be undone.')) {
+                deleteOrganization();
+            }
+        });
+
+        async function deleteOrganization() {
+            try {
+                const res = await fetch(`${apiBase}`, { method: 'DELETE' });
+                if (res.ok) {
+                    alert('Organization deleted. Redirecting...');
+                    setTimeout(() => window.location.href = '/Organization', 2000);
+                } else {
+                    const data = await res.json();
+                    alert('Error: ' + (data.error || 'Could not delete organization'));
+                }
+            } catch (err) {
+                alert('Failed to delete organization: ' + err.message);
+            }
+        }
+    </script>
+}

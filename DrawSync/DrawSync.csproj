@@ -1,9 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>0c7d1e27-bb78-4c72-abfa-95885cf94fe9</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,6 +23,10 @@
     <Content Remove="WebApplication1\**" />
     <EmbeddedResource Remove="WebApplication1\**" />
     <None Remove="WebApplication1\**" />
+    <Compile Remove="console\**" />
+    <Content Remove="console\**" />
+    <EmbeddedResource Remove="console\**" />
+    <None Remove="console\**" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,138 @@
+@model DrawSync.Models.Organization
+
+<div class="drawings-section">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div>
+            <h2>Drawings</h2>
+            <small id="drawingsCounter" style="color: #666;"></small>
+        </div>
+        <button id="createDrawingBtn" class="btn-primary-custom" style="padding: 10px 20px; font-size: 14px;">
+            + New Drawing
+        </button>
+    </div>
+
+    <div id="drawingsList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+        <p style="color: #999;">Loading drawings...</p>
+    </div>
+</div>
+
+<!-- Create Drawing Modal -->
+<div id="createDrawingModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; width: 90%;">
+        <h3>Create New Drawing</h3>
+        <form id="createDrawingForm">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Name</label>
+                <input type="text" id="drawingName" placeholder="My Drawing" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Description (optional)</label>
+                <textarea id="drawingDesc" placeholder="Optional description" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; height: 80px;"></textarea>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" class="btn-primary-custom" style="flex: 1;">Create</button>
+                <button type="button" id="cancelCreateBtn" class="btn-secondary-custom" style="flex: 1;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const orgId = '@Model.Id';
+        const apiBase = `/api/organization/${orgId}`;
+
+        document.getElementById('createDrawingBtn').addEventListener('click', () => {
+            document.getElementById('createDrawingModal').style.display = 'flex';
+        });
+
+        document.getElementById('cancelCreateBtn').addEventListener('click', () => {
+            document.getElementById('createDrawingModal').style.display = 'none';
+        });
+
+        document.getElementById('createDrawingForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('drawingName').value;
+            const description = document.getElementById('drawingDesc').value;
+
+            try {
+                const res = await fetch(`${apiBase}/drawings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, description })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    document.getElementById('createDrawingForm').reset();
+                    document.getElementById('createDrawingModal').style.display = 'none';
+                    loadDrawings();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to create drawing'));
+                }
+            } catch (err) {
+                alert('Failed to create drawing: ' + err.message);
+            }
+        });
+
+        async function loadDrawings() {
+            try {
+                const res = await fetch(`${apiBase}/drawings`);
+                const drawings = await res.json();
+
+                const list = document.getElementById('drawingsList');
+                if (!drawings || drawings.length === 0) {
+                    list.innerHTML = '<p style="color: #999;">No drawings yet. Create one to get started!</p>';
+                } else {
+                    list.innerHTML = drawings.map(d => `
+                        <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; cursor: pointer; transition: all 0.3s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='none'">
+                            <h4 style="margin-top: 0;">${d.name}</h4>
+                            <p style="color: #666; margin: 10px 0; font-size: 14px;">${d.description || 'No description'}</p>
+                            <small style="color: #999;">Created ${new Date(d['$createdAt']).toLocaleDateString()}</small>
+                            <div style="margin-top: 15px; display: flex; gap: 10px;">
+                                <button onclick="deleteDrawing('${d['$id']}')" style="padding: 5px 10px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Delete</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+
+                // Update counter with limits
+                updateCounter();
+            } catch (err) {
+                console.error('Failed to load drawings:', err);
+            }
+        }
+
+        async function updateCounter() {
+            try {
+                const res = await fetch(`${apiBase}/billing`);
+                const data = await res.json();
+                document.getElementById('drawingsCounter').textContent = `Drawings: ${document.querySelectorAll('#drawingsList > div').length} / ${data.limits.drawings}`;
+
+                // Disable button if limit reached
+                const btn = document.getElementById('createDrawingBtn');
+                const count = document.querySelectorAll('#drawingsList > div').length;
+                if (count >= data.limits.drawings) {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                    btn.title = `You\'ve reached the limit for ${data.plan} plan`;
+                }
+            } catch (err) {
+                console.error('Failed to get billing info:', err);
+            }
+        }
+
+        async function deleteDrawing(id) {
+            if (confirm('Delete this drawing?')) {
+                try {
+                    await fetch(`${apiBase}/drawings/${id}`, { method: 'DELETE' });
+                    loadDrawings();
+                } catch (err) {
+                    alert('Failed to delete drawing');
+                }
+            }
+        }
+
+        loadDrawings();
+    </script>
+}

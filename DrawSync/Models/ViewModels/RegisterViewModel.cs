@@ -22,5 +22,10 @@ namespace DrawSync.Models.ViewModels
         [DataType(DataType.Password)]
         [Display(Name = "Confirm Password")]
         public string ConfirmPassword { get; set; } = null!;
+
+        [Required]
+        [StringLength(100, MinimumLength = 2)]
+        [Display(Name = "Organization Name")]
+        public string OrganizationName { get; set; } = null!;
     }
 }

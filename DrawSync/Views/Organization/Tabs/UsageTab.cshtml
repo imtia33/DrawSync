@@ -1,0 +1,76 @@
+@model DrawSync.Models.Organization
+
+<div class="usage-section">
+    <h2>Resource Usage</h2>
+
+    <div style="background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+        <h3 style="margin-top: 0;">Your Usage</h3>
+        <div id="usageContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
+            <p style="color: #999;">Loading usage data...</p>
+        </div>
+    </div>
+
+    <div style="background: #f0f8ff; border: 1px solid #2196F3; border-radius: 8px; padding: 20px;">
+        <h3 style="margin-top: 0; color: #1565C0;">Plan Limits</h3>
+        <p style="color: #555; margin-bottom: 15px;">Your @Model.Plan plan allows:</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div style="background: white; padding: 15px; border-radius: 6px;">
+                <p style="margin: 0; color: #666; font-size: 12px; text-transform: uppercase; font-weight: 600;">Drawing Limit</p>
+                <p style="margin: 10px 0 0 0; font-size: 20px; font-weight: 600;" id="drawingLimit">--</p>
+            </div>
+            <div style="background: white; padding: 15px; border-radius: 6px;">
+                <p style="margin: 0; color: #666; font-size: 12px; text-transform: uppercase; font-weight: 600;">Member Limit</p>
+                <p style="margin: 10px 0 0 0; font-size: 20px; font-weight: 600;" id="memberLimit">--</p>
+            </div>
+        </div>
+        <p style="margin: 15px 0 0 0; color: #666; font-size: 13px;">
+            <strong>Renews on:</strong> <span id="renewsOn">--</span>
+        </p>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const orgId = '@Model.Id';
+        const apiBase = `/api/organization/${orgId}`;
+
+        async function loadUsageAndLimits() {
+            try {
+                // Load usage
+                const usageRes = await fetch(`${apiBase}/usage`);
+                const usage = await usageRes.json();
+
+                // Load billing/limits
+                const billingRes = await fetch(`${apiBase}/billing`);
+                const billing = billingRes.json();
+
+                const container = document.getElementById('usageContainer');
+                container.innerHTML = `
+                    <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #2196F3;">
+                        <p style="margin: 0; color: #666; font-size: 12px;">DRAWINGS CREATED</p>
+                        <p style="margin: 5px 0 0 0; font-size: 28px; font-weight: 600;">${usage.drawingsCount || 0}</p>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #FF9800;">
+                        <p style="margin: 0; color: #666; font-size: 12px;">TEAM MEMBERS</p>
+                        <p style="margin: 5px 0 0 0; font-size: 28px; font-weight: 600;">${usage.collaborators || 0}</p>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #9C27B0;">
+                        <p style="margin: 0; color: #666; font-size: 12px;">RENEWAL DATE</p>
+                        <p style="margin: 5px 0 0 0; font-size: 16px; font-weight: 600;">${new Date(usage.renewDate).toLocaleDateString()}</p>
+                    </div>
+                `;
+
+                // Set limits
+                const billingData = await billingRes;
+                document.getElementById('drawingLimit').textContent = billingData.limits.drawings;
+                document.getElementById('memberLimit').textContent = billingData.limits.members;
+                document.getElementById('renewsOn').textContent = new Date(usage.renewDate).toLocaleDateString();
+            } catch (err) {
+                console.error('Failed to load usage:', err);
+                document.getElementById('usageContainer').innerHTML = '<p style="color: #f44336;">Failed to load usage data</p>';
+            }
+        }
+
+        loadUsageAndLimits();
+    </script>
+}

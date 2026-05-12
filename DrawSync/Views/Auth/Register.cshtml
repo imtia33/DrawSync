@@ -44,6 +44,12 @@
                 </div>
             </div>
 
+            <div class="form-group">
+                <label asp-for="OrganizationName" class="form-label">Organization Name</label>
+                <input asp-for="OrganizationName" class="form-control-custom" placeholder="My Team or Company" />
+                <span asp-for="OrganizationName" class="field-validation-error"></span>
+            </div>
+
             <button type="submit" class="btn-primary-custom" id="submitBtn">
                 <span>Create Account</span>
             </button>

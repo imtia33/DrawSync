@@ -1,0 +1,26 @@
+@model IEnumerable<DrawSync.Models.Organization>
+
+@{
+    ViewData["Title"] = "Organizations";
+}
+
+<h2>Your Organizations</h2>
+
+<div class="org-list">
+    @if (!Model?.Any() ?? true)
+    {
+        <p>You are not a member of any organizations yet.</p>
+        <a asp-controller="Organization" asp-action="Index" class="btn-primary-custom">Refresh</a>
+    }
+    else
+    {
+        <ul>
+            @foreach (var org in Model)
+            {
+                <li>
+                    <a asp-action="Details" asp-route-id="@org.Id">@org.Name</a> — @org.Plan
+                </li>
+            }
+        </ul>
+    }
+</div>

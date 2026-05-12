@@ -15,11 +15,13 @@ namespace DrawSync.Controllers
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly Account _account;
+        private readonly Teams _teams;
 
-        public AuthController(IUnitOfWork unitOfWork, Account account)
+        public AuthController(IUnitOfWork unitOfWork, Account account, Teams teams)
         {
             _unitOfWork = unitOfWork;
             _account = account;
+            _teams = teams;
         }
 
         [HttpGet]
@@ -151,6 +153,54 @@ namespace DrawSync.Controllers
 
                 await _unitOfWork.Users.AddAsync(user);
                 await _unitOfWork.SaveChangesAsync();
+
+                // Create an organization (free) and matching team on the server-side
+                try
+                {
+                    var teamId = ID.Unique();
+
+                    // Create Team using admin Teams service
+                    await _teams.Create(teamId, model.OrganizationName);
+
+                    // Create organization row in organization table
+                    var org = new Models.Organization
+                    {
+                        Id = teamId,
+                        Name = model.OrganizationName,
+                        Plan = "free",
+                        CreatedBy = user.Id
+                    };
+
+                    await _unitOfWork.Organizations.AddAsync(org, new List<string> {
+                        Permission.Read(Role.Team(teamId)),
+                        Permission.Update(Role.Team(teamId)),
+                        Permission.Delete(Role.Team(teamId))
+                    });
+
+                    // Create Usage record for the new organization
+                    var usage = new Models.Usage
+                    {
+                        Id = ID.Unique(),
+                        OrganizationId = teamId,
+                        DrawingsCount = 0,
+                        Collaborators = 1,
+                        RenewDate = DateTime.UtcNow.AddMonths(1).ToString("yyyy-MM-dd")
+                    };
+                    await _unitOfWork.Usage.AddAsync(usage, new List<string> {
+                        Permission.Read(Role.Team(teamId)),
+                        Permission.Update(Role.Team(teamId))
+                    });
+
+                    // Add organization to user's organizations array and update
+                    user.Organizations.Add(teamId);
+                    await _unitOfWork.Users.UpdateAsync(user.Id ?? string.Empty, user);
+                    await _unitOfWork.SaveChangesAsync();
+                }
+                catch (AppwriteException ex)
+                {
+                    Console.WriteLine("Failed to create organization/team: " + ex.Message);
+                    // proceed without failing registration; user can create org later
+                }
 
                 // Fetch account details to get labels
                 var accountDetails = await _account.Get();

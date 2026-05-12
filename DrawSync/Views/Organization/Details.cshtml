@@ -1,0 +1,12 @@
+@model DrawSync.Models.Organization
+
+@{
+    ViewData["Title"] = Model?.Name ?? "Organization";
+}
+
+<h2>@Model.Name</h2>
+<p>Plan: <strong>@Model.Plan</strong></p>
+
+<div>
+    <a asp-action="Index" class="btn-secondary-custom">Back to organizations</a>
+</div>

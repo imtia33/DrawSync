@@ -1,0 +1,156 @@
+@model DrawSync.Models.Organization
+
+@{
+    ViewData["Title"] = Model.Name + " - Organization";
+}
+
+<style>
+    .org-dashboard {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .org-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        border-bottom: 1px solid #e0e0e0;
+        padding-bottom: 20px;
+    }
+
+    .org-title h1 {
+        margin: 0;
+        font-size: 28px;
+    }
+
+    .org-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .org-badge.free {
+        background-color: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .org-badge.pro {
+        background-color: #f3e5f5;
+        color: #7b1fa2;
+    }
+
+    .nav-tabs {
+        display: flex;
+        gap: 0;
+        border-bottom: 2px solid #e0e0e0;
+        margin-bottom: 30px;
+    }
+
+    .nav-tabs button {
+        padding: 15px 20px;
+        border: none;
+        background: none;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        color: #666;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -2px;
+        transition: all 0.3s;
+    }
+
+    .nav-tabs button.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+    }
+
+    .nav-tabs button:hover {
+        color: var(--primary);
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+</style>
+
+<div class="org-dashboard">
+    <div class="org-header">
+        <div class="org-title">
+            <h1>@Model.Name</h1>
+        </div>
+        <div>
+            <span class="org-badge @Model.Plan.ToLower()">@Model.Plan Plan</span>
+        </div>
+    </div>
+
+    <div class="nav-tabs">
+        <button class="tab-btn active" data-tab="drawings">Drawings</button>
+        <button class="tab-btn" data-tab="members">Members</button>
+        <button class="tab-btn" data-tab="billing">Billing</button>
+        <button class="tab-btn" data-tab="usage">Usage</button>
+        <button class="tab-btn" data-tab="invoices">Invoices</button>
+        <button class="tab-btn" data-tab="settings">Settings</button>
+    </div>
+
+    <!-- Drawings Tab -->
+    <div id="drawings" class="tab-content active">
+        <partial name="~/Views/Organization/Tabs/DrawingsTab.cshtml" model="Model" />
+    </div>
+
+    <!-- Members Tab -->
+    <div id="members" class="tab-content">
+        <partial name="~/Views/Organization/Tabs/MembersTab.cshtml" model="Model" />
+    </div>
+
+    <!-- Billing Tab -->
+    <div id="billing" class="tab-content">
+        <partial name="~/Views/Organization/Tabs/BillingTab.cshtml" model="Model" />
+    </div>
+
+    <!-- Usage Tab -->
+    <div id="usage" class="tab-content">
+        <partial name="~/Views/Organization/Tabs/UsageTab.cshtml" model="Model" />
+    </div>
+
+    <!-- Invoices Tab -->
+    <div id="invoices" class="tab-content">
+        <partial name="~/Views/Organization/Tabs/InvoicesTab.cshtml" model="Model" />
+    </div>
+
+    <!-- Settings Tab -->
+    <div id="settings" class="tab-content">
+        <partial name="~/Views/Organization/Tabs/SettingsTab.cshtml" model="Model" />
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Hide all tabs
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+
+                // Remove active class from all buttons
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    b.classList.remove('active');
+                });
+
+                // Show selected tab
+                const tabName = btn.getAttribute('data-tab');
+                document.getElementById(tabName).classList.add('active');
+                btn.classList.add('active');
+            });
+        });
+    </script>
+}

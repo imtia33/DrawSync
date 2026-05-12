@@ -70,7 +70,7 @@ namespace DrawSync.Repositories.Application
             }
         }
 
-        public async Task AddAsync(T entity)
+        public async Task AddAsync(T entity, List<string>? permissions = null)
         {
             var json = JsonConvert.SerializeObject(entity);
             var createData = JsonConvert.DeserializeObject<Dictionary<string, object>>(json)!;
@@ -85,7 +85,8 @@ namespace DrawSync.Repositories.Application
                 databaseId: _databaseId,
                 tableId: _tableId,
                 rowId: rowId,
-                data: createData
+                data: createData,
+                permissions: permissions
             );
         }
 

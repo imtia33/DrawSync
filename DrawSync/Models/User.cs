@@ -20,5 +20,8 @@ namespace DrawSync.Models
 
         [JsonProperty("$updatedAt")]
         public string UpdatedAt { get; set; } = null!;
+        
+        [JsonProperty("organizations")]
+        public System.Collections.Generic.List<string> Organizations { get; set; } = new System.Collections.Generic.List<string>();
     }
 }

@@ -8,6 +8,9 @@ using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Load optional local secrets (do not commit appsettings.Local.json)
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
@@ -31,9 +34,25 @@ builder.Services.AddScoped(sp => new Account(sp.GetRequiredService<Client>()));
 
 // Register Repository Layer
 builder.Services.AddScoped<IUserRepository, DrawSync.Repositories.Application.UserRepository>();
+builder.Services.AddScoped<DrawSync.Repositories.Interface.IOrganizationRepository, DrawSync.Repositories.Application.OrganizationRepository>();
+builder.Services.AddScoped<DrawSync.Repositories.Interface.IDrawingRepository, DrawSync.Repositories.Application.DrawingRepository>();
+builder.Services.AddScoped<DrawSync.Repositories.Interface.IInvoiceRepository, DrawSync.Repositories.Application.InvoiceRepository>();
+builder.Services.AddScoped<DrawSync.Repositories.Interface.IUsageRepository, DrawSync.Repositories.Application.UsageRepository>();
 
 // Register Unit of Work
 builder.Services.AddScoped<DrawSync.UnitOfWork.Interface.IUnitOfWork, DrawSync.UnitOfWork.Application.UnitOfWork>();
+
+// Admin Teams service (uses API key if configured)
+builder.Services.AddScoped(sp => {
+    var config = sp.GetRequiredService<IConfiguration>();
+    var adminClient = new Client();
+    adminClient
+        .SetEndpoint(config["Appwrite:Endpoint"]!)
+        .SetProject(config["Appwrite:Project"]!);
+    var apiKey = config["Appwrite:ApiKey"];
+    if (!string.IsNullOrEmpty(apiKey)) adminClient.SetKey(apiKey);
+    return new Teams(adminClient);
+});
 
 // Configure Authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
