@@ -42,6 +42,11 @@ The platform is being redesigned around a tiered storage model to reduce cloud c
 ### 1.4 Whiteboard Canvas
 - **Interface**: Infinite 2D canvas with panning (drag) and zooming (scroll/pinch).
 - **Drawing**: vector-based freehand polylines with configurable color (hex), stroke width (px), and style (solid/dashed/dotted).
+- **Creator Tracking**: Each stroke displays the creator's name and is associated with their user ID.
+- **Ownership & Permissions**:
+  - Users can **edit** (change color, width, style) only their own strokes.
+  - Users can **delete** only their own strokes.
+  - Strokes created by other users appear read-only (grayed out or marked as "by [name]").
 - **Persistence**: The canvas uses a browser local database as the primary write path for all users.
 - **Plan Tier Behavior**:
   - **Free**: Drawing data remains local to the browser unless the product later adds an upgrade path.

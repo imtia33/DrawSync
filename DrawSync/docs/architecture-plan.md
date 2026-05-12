@@ -295,7 +295,7 @@ Canvas re-renders from local DB
 
 ---
 
-## 5. Data Synchronization & Consistency
+## 6. Data Synchronization & Consistency
 
 ### 5.1 Event-Based Delta Sync
 
@@ -333,7 +333,78 @@ If a client loses websocket connection:
 
 ---
 
-## 6. Plan Enforcement & Entitlements
+## 4. Stroke Ownership & Permissions
+
+### 4.1 Data Model
+
+Each stroke includes a `createdBy` field (user ID):
+
+```javascript
+{
+  id: "stroke-abc",
+  boardId: "board-123",
+  points: [[10, 20], [15, 25], [20, 30]],
+  color: "#ff0000",
+  width: 2,
+  style: "solid",
+  createdBy: "user-1",  // Creator's user ID
+  createdAt: "2026-05-12T10:15:00Z",
+  updatedAt: "2026-05-12T10:15:00Z"
+}
+```
+
+### 4.2 Permission Rules
+
+| Action | Allowed | Condition |
+|---|---|---|
+| **Draw new stroke** | All members | Must have edit permission on board |
+| **Edit stroke** | Owner | User ID matches `createdBy` |
+| **Delete stroke** | Owner | User ID matches `createdBy` |
+| **View stroke** | All members | Visible on board |
+
+### 4.3 Client-Side Permission Checks
+
+When rendering the canvas:
+
+```javascript
+// Pseudocode
+for (const stroke of board.strokes) {
+  if (stroke.createdBy === currentUser.id) {
+    // Render as editable (highlight on hover, show edit/delete buttons)
+    canvas.renderStroke(stroke, { editable: true });
+  } else {
+    // Render as read-only (different color/opacity, no interaction)
+    canvas.renderStroke(stroke, { editable: false, opacity: 0.9 });
+  }
+}
+```
+
+### 4.4 Server-Side Validation
+
+On every edit/delete request, the server validates ownership:
+
+```csharp
+// Pseudocode
+if (strokeUpdateEvent.StrokeId != null) {
+  var stroke = await GetStroke(strokeUpdateEvent.StrokeId);
+  if (stroke.CreatedBy != currentUser.Id) {
+    return Error("Permission denied: you can only edit your own strokes");
+  }
+  // Proceed with update
+}
+```
+
+This prevents malicious clients from bypassing UI restrictions.
+
+### 4.5 UI Feedback
+
+- **Own strokes**: Normal rendering, hover shows edit/delete buttons
+- **Others' strokes**: Slightly grayed out or dimmed, label showing creator name (e.g., "By Alice"), no interaction
+- **On delete attempt of others' stroke**: Show tooltip: "You can only delete your own strokes"
+
+---
+
+## 5. Plan Enforcement & Entitlements
 
 ### 6.1 At-Join Checks
 

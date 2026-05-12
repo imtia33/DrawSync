@@ -386,12 +386,13 @@ Server Response:
   "type": "ack",
   "status": "ok",
   "data": {
-    "strokeId": "stroke-abc"  // Server-assigned ID
+    "strokeId": "stroke-abc",  // Server-assigned ID
+    "createdBy": "user-1"      // Server sets from authenticated user
   }
 }
 ```
 
-#### `strokeUpdate` - Update Existing Stroke
+#### `strokeUpdate` - Update Existing Stroke (Owner Only)
 ```json
 {
   "id": "evt-uuid-2",
@@ -406,11 +407,46 @@ Server Response:
   }
 }
 
-Server Response:
+Server Response (on success):
 {
   "id": "evt-uuid-2",
   "type": "ack",
   "status": "ok"
+}
+
+Server Response (if not owner):
+{
+  "id": "evt-uuid-2",
+  "type": "ack",
+  "status": "error",
+  "error": "Permission denied: you can only edit your own strokes"
+}
+```
+
+#### `strokeDelete` - Delete Stroke (Owner Only)
+```json
+{
+  "id": "evt-uuid-delete",
+  "type": "strokeDelete",
+  "timestamp": "2026-05-12T10:15:32.000Z",
+  "payload": {
+    "strokeId": "stroke-abc"
+  }
+}
+
+Server Response (on success):
+{
+  "id": "evt-uuid-delete",
+  "type": "ack",
+  "status": "ok"
+}
+
+Server Response (if not owner):
+{
+  "id": "evt-uuid-delete",
+  "type": "ack",
+  "status": "error",
+  "error": "Permission denied: you can only delete your own strokes"
 }
 ```
 
@@ -447,14 +483,31 @@ Note: No ACK for cursor events (fire-and-forget)
     "points": [[10, 20], [15, 25], [20, 30]],
     "color": "#ff0000",
     "width": 2,
-    "style": "solid"
+    "style": "solid",
+    "createdBy": "user-1"  // Creator's user ID
   }
 }
 
 Client Flow (Non-Sender):
 1. Receive event
-2. Insert stroke into local IndexedDB strokes table
-3. Render stroke on canvas
+2. Insert stroke into local IndexedDB strokes table (including createdBy)
+3. Render stroke on canvas (read-only, since not creator)
+```
+
+#### `strokeDeleted` - Stroke Deleted by Owner
+```json
+{
+  "type": "strokeDeleted",
+  "payload": {
+    "strokeId": "stroke-abc",
+    "deletedBy": "user-1"
+  }
+}
+
+Client Flow:
+1. Receive event
+2. Delete stroke from local IndexedDB
+3. Remove stroke from canvas rendering
 ```
 
 #### `presence` - Join/Leave Broadcast
@@ -622,4 +675,8 @@ This ensures the UI is responsive even on high-latency connections.
 - [ ] Checksum validation for backup integrity
 - [ ] Client-side retry logic with exponential backoff
 - [ ] Monitoring/logging of all API calls and websocket events
+- [ ] Permission checks for stroke edit/delete (owner only)
+- [ ] UI prevents selection/interaction with non-owned strokes
+- [ ] Tooltip shown on attempt to edit/delete others' strokes
+- [ ] Creator name/ID displayed on strokes in canvas
 
