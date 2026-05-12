@@ -18,8 +18,5 @@ namespace DrawSync.Models
 
         [JsonProperty("$updatedAt")]
         public string UpdatedAt { get; set; } = null!;
-
-        [JsonProperty("createdBy")]
-        public string CreatedBy { get; set; } = null!;
     }
 }

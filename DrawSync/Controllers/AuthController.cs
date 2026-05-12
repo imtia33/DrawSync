@@ -92,7 +92,14 @@ namespace DrawSync.Controllers
                     new ClaimsPrincipal(claimsIdentity),
                     authProperties);
 
-                return RedirectToAction("Index", "Home");
+                var accessibleOrganizations = await _unitOfWork.Organizations.GetAllAsync();
+                var firstOrg = accessibleOrganizations.FirstOrDefault();
+                if (firstOrg?.Id != null)
+                {
+                    return RedirectToAction("Details", "Organization", new { id = firstOrg.Id });
+                }
+
+                return RedirectToAction("Index", "Organization");
             }
             catch (AppwriteException ex)
             {
@@ -155,10 +162,10 @@ namespace DrawSync.Controllers
                 await _unitOfWork.SaveChangesAsync();
 
                 // Create an organization (free) and matching team on the server-side
+                var teamId = ID.Unique();
+
                 try
                 {
-                    var teamId = ID.Unique();
-
                     // Create Team using admin Teams service
                     await _teams.Create(teamId, model.OrganizationName);
 
@@ -167,8 +174,7 @@ namespace DrawSync.Controllers
                     {
                         Id = teamId,
                         Name = model.OrganizationName,
-                        Plan = "free",
-                        CreatedBy = user.Id
+                        Plan = "free"
                     };
 
                     await _unitOfWork.Organizations.AddAsync(org, new List<string> {
@@ -191,15 +197,19 @@ namespace DrawSync.Controllers
                         Permission.Update(Role.Team(teamId))
                     });
 
-                    // Add organization to user's organizations array and update
-                    user.Organizations.Add(teamId);
-                    await _unitOfWork.Users.UpdateAsync(user.Id ?? string.Empty, user);
-                    await _unitOfWork.SaveChangesAsync();
                 }
                 catch (AppwriteException ex)
                 {
                     Console.WriteLine("Failed to create organization/team: " + ex.Message);
-                    // proceed without failing registration; user can create org later
+
+                    try
+                    {
+                        await _account.DeleteSession("current");
+                    }
+                    catch { /* Ignore cleanup errors */ }
+
+                    ModelState.AddModelError(string.Empty, $"Organization creation failed: {ex.Message}");
+                    return View(model);
                 }
 
                 // Fetch account details to get labels
@@ -220,7 +230,14 @@ namespace DrawSync.Controllers
                     CookieAuthenticationDefaults.AuthenticationScheme,
                     new ClaimsPrincipal(claimsIdentity));
 
-                return RedirectToAction("Index", "Home");
+                var accessibleOrganizations = await _unitOfWork.Organizations.GetAllAsync();
+                var firstOrg = accessibleOrganizations.FirstOrDefault();
+                if (firstOrg?.Id != null)
+                {
+                    return RedirectToAction("Details", "Organization", new { id = firstOrg.Id });
+                }
+
+                return RedirectToAction("Index", "Organization");
             }
             catch (AppwriteException ex)
             {

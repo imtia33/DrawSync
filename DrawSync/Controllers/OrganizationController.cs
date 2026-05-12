@@ -20,16 +20,7 @@ namespace DrawSync.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return RedirectToAction("Login", "Auth");
 
-            var user = await _unitOfWork.Users.GetByIdAsync(userId);
-            if (user == null) return RedirectToAction("Index", "Home");
-
-            var orgs = new List<Models.Organization>();
-            foreach (var orgId in user.Organizations)
-            {
-                var org = await _unitOfWork.Organizations.GetByIdAsync(orgId);
-                if (org != null) orgs.Add(org);
-            }
-
+            var orgs = await _unitOfWork.Organizations.GetAllAsync();
             return View(orgs);
         }
 
@@ -37,14 +28,6 @@ namespace DrawSync.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return RedirectToAction("Login", "Auth");
-
-            var user = await _unitOfWork.Users.GetByIdAsync(userId);
-            if (user == null) return RedirectToAction("Index", "Home");
-
-            if (!user.Organizations.Contains(id))
-            {
-                return Forbid();
-            }
 
             var org = await _unitOfWork.Organizations.GetByIdAsync(id);
             if (org == null) return NotFound();

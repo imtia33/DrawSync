@@ -13,12 +13,6 @@ namespace DrawSync.Models
         [JsonProperty("name")]
         public string Name { get; set; } = null!;
 
-        [JsonProperty("description")]
-        public string? Description { get; set; }
-
-        [JsonProperty("createdBy")]
-        public string CreatedBy { get; set; } = null!;
-
         [JsonProperty("$createdAt")]
         public string CreatedAt { get; set; } = null!;
 

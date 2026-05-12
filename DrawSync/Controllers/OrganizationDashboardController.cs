@@ -27,11 +27,8 @@ namespace DrawSync.Controllers
 
         private async Task<bool> IsUserInOrgAsync(string organizationId)
         {
-            var userId = GetUserId();
-            if (string.IsNullOrEmpty(userId)) return false;
-
-            var user = await _unitOfWork.Users.GetByIdAsync(userId);
-            return user?.Organizations.Contains(organizationId) ?? false;
+            var org = await _unitOfWork.Organizations.GetByIdAsync(organizationId);
+            return org != null;
         }
 
         // Dashboard Overview - List Drawings
@@ -69,9 +66,7 @@ namespace DrawSync.Controllers
             {
                 Id = ID.Unique(),
                 OrganizationId = organizationId,
-                Name = req.Name,
-                Description = req.Description,
-                CreatedBy = userId ?? string.Empty
+                Name = req.Name
             };
 
             await _unitOfWork.Drawings.AddAsync(drawing, new List<string> {
@@ -111,7 +106,6 @@ namespace DrawSync.Controllers
                 return NotFound();
 
             drawing.Name = req.Name ?? drawing.Name;
-            drawing.Description = req.Description ?? drawing.Description;
 
             await _unitOfWork.Drawings.UpdateAsync(id, drawing);
             await _unitOfWork.SaveChangesAsync();
@@ -249,11 +243,6 @@ namespace DrawSync.Controllers
             if (org == null)
                 return NotFound();
 
-            // SECURITY: Only allow upgrade if user is the creator
-            var userId = GetUserId();
-            if (org.CreatedBy != userId)
-                return Forbid("Only organization creator can upgrade.");
-
             // SECURITY: Prevent double-upgrades
             if (org.Plan == "pro")
                 return BadRequest(new { error = "Already on Pro plan." });
@@ -375,10 +364,6 @@ namespace DrawSync.Controllers
             if (org == null)
                 return NotFound();
 
-            var userId = GetUserId();
-            if (org.CreatedBy != userId)
-                return Forbid("Only organization creator can delete the organization.");
-
             // Delete all associated drawings
             var drawings = await _unitOfWork.Drawings.GetByOrganizationAsync(organizationId);
             foreach (var drawing in drawings)
@@ -395,14 +380,6 @@ namespace DrawSync.Controllers
 
             // Delete the organization
             await _unitOfWork.Organizations.DeleteAsync(organizationId);
-
-            // Remove organization from user's list
-            var user = await _unitOfWork.Users.GetByIdAsync(userId ?? string.Empty);
-            if (user != null)
-            {
-                user.Organizations.Remove(organizationId);
-                await _unitOfWork.Users.UpdateAsync(user.Id ?? string.Empty, user);
-            }
 
             await _unitOfWork.SaveChangesAsync();
             return Ok(new { message = "Organization deleted successfully" });
@@ -476,13 +453,11 @@ namespace DrawSync.Controllers
         public class CreateDrawingRequest
         {
             public string Name { get; set; } = null!;
-            public string? Description { get; set; }
         }
 
         public class UpdateDrawingRequest
         {
             public string? Name { get; set; }
-            public string? Description { get; set; }
         }
 
         public class InviteMemberRequest

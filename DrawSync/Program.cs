@@ -17,7 +17,10 @@ builder.Services.AddControllersWithViews();
 // Add HttpContextAccessor
 builder.Services.AddHttpContextAccessor();
 
-// Configure Appwrite Client
+// Prefer user secrets for local API key overrides
+builder.Configuration.AddUserSecrets<Program>(optional: true, reloadOnChange: true);
+
+// Configure Appwrite clients
 builder.Services.AddSingleton(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
@@ -29,7 +32,22 @@ builder.Services.AddSingleton(sp =>
 });
 
 // Register Appwrite Services
-builder.Services.AddScoped(sp => new TablesDB(sp.GetRequiredService<Client>()));
+builder.Services.AddScoped(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var adminClient = new Client();
+    adminClient
+        .SetEndpoint(config["Appwrite:Endpoint"]!)
+        .SetProject(config["Appwrite:Project"]!);
+
+    var apiKey = config["Appwrite:ApiKey"];
+    if (!string.IsNullOrWhiteSpace(apiKey))
+    {
+        adminClient.SetKey(apiKey);
+    }
+
+    return new TablesDB(adminClient);
+});
 builder.Services.AddScoped(sp => new Account(sp.GetRequiredService<Client>()));
 
 // Register Repository Layer
