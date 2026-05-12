@@ -1,76 +1,146 @@
 @model DrawSync.Models.Organization
 
-<div class="usage-section">
-    <h2>Resource Usage</h2>
-
-    <div style="background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-        <h3 style="margin-top: 0;">Your Usage</h3>
-        <div id="usageContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
-            <p style="color: #999;">Loading usage data...</p>
+<div class="tab-view-container">
+    <div class="view-header">
+        <div class="header-text">
+            <h2>Resource Usage</h2>
+            <p class="subtitle">Monitor your workspace consumption and plan constraints.</p>
         </div>
     </div>
 
-    <div style="background: #f0f8ff; border: 1px solid #2196F3; border-radius: 8px; padding: 20px;">
-        <h3 style="margin-top: 0; color: #1565C0;">Plan Limits</h3>
-        <p style="color: #555; margin-bottom: 15px;">Your @Model.Plan plan allows:</p>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            <div style="background: white; padding: 15px; border-radius: 6px;">
-                <p style="margin: 0; color: #666; font-size: 12px; text-transform: uppercase; font-weight: 600;">Drawing Limit</p>
-                <p style="margin: 10px 0 0 0; font-size: 20px; font-weight: 600;" id="drawingLimit">--</p>
-            </div>
-            <div style="background: white; padding: 15px; border-radius: 6px;">
-                <p style="margin: 0; color: #666; font-size: 12px; text-transform: uppercase; font-weight: 600;">Member Limit</p>
-                <p style="margin: 10px 0 0 0; font-size: 20px; font-weight: 600;" id="memberLimit">--</p>
+    <div class="usage-grid">
+        <!-- Resource Meters -->
+        <div class="card-surface usage-meters-card">
+            <h3>Live Workspace Consumption</h3>
+            <div id="metersContainer" class="meters-list">
+                <div class="loading-state">
+                    <div class="spinner-border text-indigo" role="status"></div>
+                    <p>Calculating consumption...</p>
+                </div>
             </div>
         </div>
-        <p style="margin: 15px 0 0 0; color: #666; font-size: 13px;">
-            <strong>Renews on:</strong> <span id="renewsOn">--</span>
-        </p>
+
+        <!-- Plan Summary -->
+        <div class="card-surface plan-constraints-card">
+            <div class="header-with-icon">
+                <i class="bi bi-info-circle"></i>
+                <h3>@Model.Plan.ToUpper() Limits</h3>
+            </div>
+            <p class="constraints-sub">Your current subscription provides the following maximum capacities:</p>
+            
+            <div class="constraints-grid">
+                <div class="constraint-item">
+                    <span class="label">Drawing Slots</span>
+                    <span class="value" id="drawingLimit">--</span>
+                </div>
+                <div class="constraint-item">
+                    <span class="label">Team Capacity</span>
+                    <span class="value" id="memberLimit">--</span>
+                </div>
+                <div class="constraint-item">
+                    <span class="label">Storage Policy</span>
+                    <span class="value">Standard</span>
+                </div>
+                <div class="constraint-item">
+                    <span class="label">Renewal Cycle</span>
+                    <span class="value" id="renewsOn">--</span>
+                </div>
+            </div>
+
+            <div class="upgrade-prompt">
+                <p>Need more resources for your growing team?</p>
+                <button onclick="document.querySelector('[data-tab=billing]').click()" class="btn-text-link">
+                    Explore Professional Plans <i class="bi bi-arrow-right"></i>
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
-@section Scripts {
-    <script>
+<style>
+    .usage-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; }
+    
+    .usage-meters-card { padding: 32px; }
+    .usage-meters-card h3 { font-size: 1.1rem; font-weight: 700; color: #111827; margin-bottom: 32px; }
+    
+    .meters-list { display: flex; flex-direction: column; gap: 32px; }
+    
+    .meter-item { }
+    .meter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .meter-label { font-size: 0.85rem; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: 0.05em; }
+    .meter-percentage { font-size: 0.9rem; font-weight: 700; color: #111827; }
+    
+    .progress-track { height: 10px; background: #F3F4F6; border-radius: 100px; overflow: hidden; position: relative; }
+    .progress-bar { height: 100%; border-radius: 100px; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
+    
+    .bar-drawings { background: linear-gradient(to right, #6366f1, #4f46e5); }
+    .bar-members { background: linear-gradient(to right, #ec4899, #db2777); }
+    .bar-storage { background: linear-gradient(to right, #10b981, #059669); }
+
+    .plan-constraints-card { padding: 32px; background: #F9FAFF; border-color: #E0E7FF; }
+    .header-with-icon { display: flex; align-items: center; gap: 10px; color: #4F46E5; margin-bottom: 12px; }
+    .header-with-icon h3 { font-size: 1.1rem; font-weight: 800; color: #1E1B4B; margin: 0; }
+    .constraints-sub { font-size: 0.9rem; color: #4338CA; opacity: 0.8; margin-bottom: 24px; line-height: 1.5; }
+    
+    .constraints-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
+    .constraint-item { background: white; padding: 16px; border-radius: 12px; border: 1px solid #E0E7FF; }
+    .constraint-item .label { display: block; font-size: 0.7rem; font-weight: 700; color: #94A3B8; text-transform: uppercase; margin-bottom: 4px; }
+    .constraint-item .value { font-size: 1.1rem; font-weight: 800; color: #1E1B4B; }
+    
+    .upgrade-prompt { padding-top: 24px; border-top: 1px solid #E0E7FF; }
+    .upgrade-prompt p { font-size: 0.85rem; color: #4338CA; margin-bottom: 8px; }
+    .btn-text-link { background: transparent; border: none; color: #4F46E5; font-weight: 700; font-size: 0.9rem; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 6px; }
+    .btn-text-link:hover { text-decoration: underline; }
+
+    @@media (max-width: 992px) { .usage-grid { grid-template-columns: 1fr; } }
+</style>
+
+<script>
+    (function() {
         const orgId = '@Model.Id';
         const apiBase = `/api/organization/${orgId}`;
 
         async function loadUsageAndLimits() {
             try {
-                // Load usage
                 const usageRes = await fetch(`${apiBase}/usage`);
                 const usage = await usageRes.json();
-
-                // Load billing/limits
                 const billingRes = await fetch(`${apiBase}/billing`);
-                const billing = billingRes.json();
+                const billing = await billingRes.json();
 
-                const container = document.getElementById('usageContainer');
+                const dPerc = Math.min(100, (usage.drawingsCount / billing.limits.drawings) * 100);
+                const mPerc = Math.min(100, (usage.collaborators / billing.limits.members) * 100);
+
+                const container = document.getElementById('metersContainer');
                 container.innerHTML = `
-                    <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #2196F3;">
-                        <p style="margin: 0; color: #666; font-size: 12px;">DRAWINGS CREATED</p>
-                        <p style="margin: 5px 0 0 0; font-size: 28px; font-weight: 600;">${usage.drawingsCount || 0}</p>
+                    <div class="meter-item">
+                        <div class="meter-header">
+                            <span class="meter-label">Drawing Slots Used</span>
+                            <span class="meter-percentage">${usage.drawingsCount} / ${billing.limits.drawings}</span>
+                        </div>
+                        <div class="progress-track"><div class="progress-bar bar-drawings" style="width: ${dPerc}%"></div></div>
                     </div>
-                    <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #FF9800;">
-                        <p style="margin: 0; color: #666; font-size: 12px;">TEAM MEMBERS</p>
-                        <p style="margin: 5px 0 0 0; font-size: 28px; font-weight: 600;">${usage.collaborators || 0}</p>
+                    <div class="meter-item">
+                        <div class="meter-header">
+                            <span class="meter-label">Team Collaboration Capacity</span>
+                            <span class="meter-percentage">${usage.collaborators} / ${billing.limits.members}</span>
+                        </div>
+                        <div class="progress-track"><div class="progress-bar bar-members" style="width: ${mPerc}%"></div></div>
                     </div>
-                    <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #9C27B0;">
-                        <p style="margin: 0; color: #666; font-size: 12px;">RENEWAL DATE</p>
-                        <p style="margin: 5px 0 0 0; font-size: 16px; font-weight: 600;">${new Date(usage.renewDate).toLocaleDateString()}</p>
+                    <div class="meter-item">
+                        <div class="meter-header">
+                            <span class="meter-label">Cloud Asset Storage</span>
+                            <span class="meter-percentage">Standard (Unlimited)</span>
+                        </div>
+                        <div class="progress-track"><div class="progress-bar bar-storage" style="width: 15%"></div></div>
                     </div>
                 `;
 
-                // Set limits
-                const billingData = await billingRes;
-                document.getElementById('drawingLimit').textContent = billingData.limits.drawings;
-                document.getElementById('memberLimit').textContent = billingData.limits.members;
-                document.getElementById('renewsOn').textContent = new Date(usage.renewDate).toLocaleDateString();
-            } catch (err) {
-                console.error('Failed to load usage:', err);
-                document.getElementById('usageContainer').innerHTML = '<p style="color: #f44336;">Failed to load usage data</p>';
-            }
+                document.getElementById('drawingLimit').textContent = billing.limits.drawings;
+                document.getElementById('memberLimit').textContent = billing.limits.members;
+                document.getElementById('renewsOn').textContent = new Date(usage.renewDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            } catch (err) { console.error(err); }
         }
 
         loadUsageAndLimits();
-    </script>
-}
+    })();
+</script>

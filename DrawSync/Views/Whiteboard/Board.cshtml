@@ -1,0 +1,188 @@
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Drawing Board";
+}
+
+@section Scripts {
+    <script src="~/js/storage.js"></script>
+    <script src="~/js/whiteboard.js"></script>
+}
+
+<link rel="stylesheet" href="~/css/whiteboard.css" />
+
+<div class="app-container">
+    <!-- Top Bar: Navigation and Tool Selection -->
+    <header class="app-header">
+        <div class="header-left">
+            <a href="/whiteboard" class="back-btn" title="Back to Dashboard">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div class="divider"></div>
+            <span id="displayBoardName" class="board-name">Loading Board...</span>
+            <span id="saveStatus" class="save-status">Saved</span>
+        </div>
+
+        <div class="toolbar-center">
+            <div class="tool-group">
+                <button class="tool-btn active" data-tool="select" title="Selection (V)"><i class="bi bi-cursor-fill"></i></button>
+                <button class="tool-btn" data-tool="pencil" title="Pencil (P)"><i class="bi bi-pencil-fill"></i></button>
+                <button class="tool-btn" data-tool="eraser" title="Eraser (E)"><i class="bi bi-eraser-fill"></i></button>
+                <button class="tool-btn" data-tool="pan" title="Pan (Space)"><i class="bi bi-hand-index-thumb"></i></button>
+            </div>
+            <div class="tool-divider"></div>
+            <div class="tool-group">
+                <button class="tool-btn" data-tool="line" title="Line (L)"><i class="bi bi-slash-lg"></i></button>
+                <button class="tool-btn" data-tool="arrow" title="Arrow (A)"><i class="bi bi-arrow-up-right"></i></button>
+                <button class="tool-btn" data-tool="rectangle" title="Rectangle (R)"><i class="bi bi-square"></i></button>
+                <button class="tool-btn" data-tool="circle" title="Circle (O)"><i class="bi bi-circle"></i></button>
+                <button class="tool-btn" data-tool="diamond" title="Diamond (D)"><i class="bi bi-diamond"></i></button>
+            </div>
+        </div>
+
+        <div class="header-right">
+            <button id="undoBtn" class="action-btn" title="Undo (Ctrl+Z)"><i class="bi bi-arrow-counterclockwise"></i></button>
+            <button id="redoBtn" class="action-btn" title="Redo (Ctrl+Y)"><i class="bi bi-arrow-clockwise"></i></button>
+            <div class="export-dropdown">
+                <button id="exportBtn" class="action-btn primary" title="Export Options">
+                    <i class="bi bi-download"></i>
+                    Export
+                </button>
+                <div id="exportMenu" class="export-menu">
+                    <button id="exportPng" class="export-item">
+                        <i class="bi bi-image"></i>
+                        <span>Transparent PNG</span>
+                    </button>
+                    <button id="exportJpg" class="export-item">
+                        <i class="bi bi-file-earmark-image"></i>
+                        <span>JPG with Background</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="workspace-main">
+        <!-- Sidebar: Styles and Board Settings -->
+        <aside class="app-sidebar">
+            <section class="sidebar-section">
+                <label>Stroke & Fill</label>
+                <div class="swatch-row">
+                    <div class="swatch-container" id="strokeSwatchBtn">
+                        <div class="swatch" id="strokeSwatch" style="background: #000000;"></div>
+                        <span>Stroke</span>
+                    </div>
+                    <div class="swatch-container" id="fillSwatchBtn">
+                        <div class="swatch" id="fillSwatch" style="background: transparent;"></div>
+                        <span>Fill</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="sidebar-section">
+                <label>Brush Settings</label>
+                <div class="setting-item">
+                    <div class="setting-header">
+                        <span>Size</span>
+                        <span id="widthVal">2px</span>
+                    </div>
+                    <input type="range" id="strokeWidth" min="1" max="20" value="2">
+                </div>
+                <div class="setting-item">
+                    <div class="setting-header">
+                        <span>Opacity</span>
+                        <span id="opacityVal">100%</span>
+                    </div>
+                    <input type="range" id="opacity" min="1" max="100" value="100">
+                </div>
+            </section>
+
+            <section class="sidebar-section">
+                <label>Stroke Style</label>
+                <div class="style-toggle-group" id="strokeStyle">
+                    <button class="style-toggle active" data-value="solid"><i class="bi bi-dash-lg"></i></button>
+                    <button class="style-toggle" data-value="dashed"><i class="bi bi-distribute-horizontal"></i></button>
+                    <button class="style-toggle" data-value="dotted"><i class="bi bi-three-dots"></i></button>
+                </div>
+            </section>
+
+            <section class="sidebar-section">
+                <label>Board Background</label>
+                <div class="bg-presets">
+                    <div class="bg-item active" data-bg="#f8f9fa" style="background: #f8f9fa;" title="Off White"></div>
+                    <div class="bg-item" data-bg="#ffffff" style="background: #ffffff; border: 1px solid #eee;" title="Pure White"></div>
+                    <div class="bg-item" data-bg="#1a1a1a" style="background: #1a1a1a;" title="Dark Mode"></div>
+                    <div class="bg-item" data-bg="#2d3436" style="background: #2d3436;" title="Deep Gray"></div>
+                    <div class="bg-item" data-bg="#fdf6e3" style="background: #fdf6e3;" title="Solarized"></div>
+                    <div class="bg-item" data-bg="#e0f2fe" style="background: #e0f2fe;" title="Soft Blue"></div>
+                    <div class="bg-item" data-bg="#dcfce7" style="background: #dcfce7;" title="Soft Green"></div>
+                    <div class="bg-item" data-bg="#fce7f3" style="background: #fce7f3;" title="Soft Pink"></div>
+                    <div class="bg-item grid-item" data-bg="#f8f9fa" data-grid="true" title="Grid View">
+                        <div class="mini-grid"></div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="sidebar-footer">
+                <button id="clearBtn" class="clear-canvas-btn"><i class="bi bi-trash"></i> Clear Board</button>
+            </div>
+        </aside>
+
+        <!-- Main Canvas Area -->
+        <main class="canvas-container" id="canvasParent">
+            <canvas id="whiteboardCanvas"></canvas>
+            
+            <!-- Zoom Controls (Overlay on Canvas) -->
+            <div class="zoom-overlay">
+                <button id="zoomOut" class="zoom-btn"><i class="bi bi-dash"></i></button>
+                <span id="zoomLevel">100%</span>
+                <button id="zoomIn" class="zoom-btn"><i class="bi bi-plus"></i></button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Floating Color Picker (Hidden by default, positioned relative to swatch) -->
+    <div id="colorPickerPanel" class="popover-picker" style="display: none;">
+        <div class="picker-header">
+            <span id="pickerTitle">Stroke Color</span>
+            <button id="closePicker"><i class="bi bi-x"></i></button>
+        </div>
+        <div class="picker-body">
+            <div class="wheel-box">
+                <canvas id="hueWheel"></canvas>
+                <canvas id="svSquare"></canvas>
+                <div id="svCursor" class="picker-cursor"></div>
+            </div>
+            <div class="picker-footer">
+                <div class="hex-box">
+                    <label>HEX</label>
+                    <input type="text" id="hexInput" value="#000000">
+                </div>
+                <button id="noFillBtn" class="no-fill-btn" title="No Fill / Transparent">
+                    <i class="bi bi-x-circle"></i> None
+                </button>
+                <div id="colorPreview" class="preview-box"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Adaptive Cursor -->
+    <div id="customCursor" class="adaptive-cursor"></div>
+
+    <!-- Custom Alert Modal -->
+    <div id="clearConfirmModal" class="custom-modal">
+        <div class="modal-card">
+            <div class="modal-icon"><i class="bi bi-exclamation-triangle"></i></div>
+            <h2>Clear Whiteboard?</h2>
+            <p>This will permanently erase all drawings on this board. This action cannot be undone.</p>
+            <div class="modal-btns">
+                <button id="cancelClear" class="cancel-btn">Cancel</button>
+                <button id="confirmClear" class="confirm-btn">Clear Everything</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.body.classList.add('whiteboard-page');
+    window.boardId = '@ViewBag.BoardId';
+</script>

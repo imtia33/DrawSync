@@ -28,10 +28,18 @@ header {
 }
 
 .navbar {
-    background: rgba(0, 0, 0, 0.8) !important;
+    background: #ffffff !important;
     backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--card-border);
-    padding: 1.25rem 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 0.75rem 0;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
 }
 
 .navbar-brand {
@@ -39,20 +47,30 @@ header {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 2px;
-    background: linear-gradient(to right, #ffffff, #6366f1);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    font-size: 1.4rem;
-}
-
-.nav-link {
-    color: var(--text-muted) !important;
-    font-weight: 500;
+    font-size: 1.3rem;
+    color: #111827 !important;
     transition: var(--transition);
 }
 
+.navbar-brand span {
+    color: #4f46e5;
+}
+
+.nav-link {
+    color: #111827 !important;
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: var(--transition);
+    padding: 0.5rem 1rem !important;
+}
+
 .nav-link:hover {
-    color: var(--text-main) !important;
+    color: #111827 !important;
+}
+
+.nav-link.active {
+    color: #4f46e5 !important;
+    font-weight: 600;
 }
 
 /* Auth Card Styles */
@@ -130,47 +148,76 @@ header {
 
 .btn-primary-custom {
     display: inline-block;
-    background: var(--primary);
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
     color: white;
     border: none;
-    border-radius: 4px; /* Rectangular */
-    padding: 0.6rem 1.5rem; /* Smaller */
-    font-weight: 600;
-    font-size: 0.875rem;
+    border-radius: 12px;
+    padding: 0.85rem 2.5rem;
+    font-weight: 700;
+    font-size: 0.95rem;
     cursor: pointer;
-    transition: var(--transition);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     text-align: center;
+    text-decoration: none;
+    box-shadow: 0 4px 15px -3px rgba(79, 70, 229, 0.4);
 }
 
 .btn-primary-custom:hover {
-    background: var(--primary-hover);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 12px 20px -5px rgba(79, 70, 229, 0.5);
+    background: linear-gradient(135deg, #818cf8 0%, #4f46e5 100%);
+    color: #ffffff !important; /* Force light text */
+}
+
+.btn-primary-custom:active {
+    transform: translateY(-1px);
 }
 
 .btn-outline-custom {
     display: inline-block;
-    background: transparent;
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px; /* Rectangular */
-    padding: 0.6rem 1.5rem; /* Smaller */
-    font-weight: 600;
-    font-size: 0.875rem;
+    background: rgba(255, 255, 255, 0.03);
+    color: #111827; /* Dark text for light background */
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 0.85rem 2.5rem;
+    font-weight: 700;
+    font-size: 0.95rem;
     cursor: pointer;
-    transition: var(--transition);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     text-align: center;
+    text-decoration: none;
 }
 
 .btn-outline-custom:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: white;
-    transform: translateY(-2px);
+    background: #ffffff;
+    color: #4f46e5 !important; /* Turn text indigo on hover */
+    border-color: #4f46e5;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px -5px rgba(79, 70, 229, 0.15);
 }
 
 /* Layout spacing */
-.content-wrapper {
-    flex: 1 0 auto;
+.main-content-container {
+    padding-top: 70px; /* Space for fixed navbar */
+    min-height: calc(100vh - 70px);
+}
+
+.btn-logout-small {
+    background: transparent;
+    border: 1px solid #e5e7eb;
+    color: #6b7280;
+    padding: 4px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-logout-small:hover {
+    background: #f9fafb;
+    color: #111827;
+    border-color: #d1d5db;
 }
 
 /* Footer spacing */

@@ -1,48 +1,88 @@
 @model DrawSync.Models.Organization
 
-<div class="members-section">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <div>
+<div class="tab-view-container">
+    <div class="view-header">
+        <div class="header-text">
             <h2>Team Members</h2>
-            <small id="membersCounter" style="color: #666;"></small>
+            <p class="subtitle" id="membersCounter">Loading workspace members...</p>
         </div>
-        <button id="inviteMemberBtn" class="btn-primary-custom" style="padding: 10px 20px; font-size: 14px;">
-            + Invite Member
+        <button id="inviteMemberBtn" class="btn-new-drawing">
+            <i class="bi bi-person-plus"></i>
+            Invite Member
         </button>
     </div>
 
-    <div id="membersList" style="border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
-        <p style="color: #999; padding: 20px; margin: 0;">Loading members...</p>
+    <div class="card-surface">
+        <div id="membersList" class="table-responsive">
+            <div class="loading-state">
+                <div class="spinner-border text-indigo" role="status"></div>
+                <p>Retrieving member list...</p>
+            </div>
+        </div>
     </div>
 </div>
 
 <!-- Invite Member Modal -->
-<div id="inviteModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
-    <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; width: 90%;">
-        <h3>Invite Member</h3>
+<div id="inviteModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+        <h3>Invite Team Member</h3>
+        <p class="modal-sub">Add a new collaborator to your organization workspace.</p>
         <form id="inviteForm">
-            <div class="form-group" style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Email</label>
-                <input type="email" id="inviteEmail" placeholder="member@example.com" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+            <div class="form-input-group">
+                <label>Email Address</label>
+                <input type="email" id="inviteEmail" placeholder="colleague@example.com" required>
             </div>
-            <div class="form-group" style="margin-bottom: 20px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Role</label>
-                <select id="inviteRole" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                    <option value="member">Member</option>
-                    <option value="editor">Editor</option>
-                    <option value="admin">Admin</option>
+            <div class="form-input-group">
+                <label>Access Role</label>
+                <select id="inviteRole">
+                    <option value="member">Member (View & Draw)</option>
+                    <option value="editor">Editor (Full Access)</option>
+                    <option value="admin">Admin (Manage Billing)</option>
                 </select>
             </div>
-            <div style="display: flex; gap: 10px;">
-                <button type="submit" class="btn-primary-custom" style="flex: 1;">Send Invite</button>
-                <button type="button" id="cancelInviteBtn" class="btn-secondary-custom" style="flex: 1;">Cancel</button>
+            <div class="modal-footer-btns">
+                <button type="button" id="cancelInviteBtn" class="btn-cancel">Cancel</button>
+                <button type="submit" class="btn-submit">Send Invitation</button>
             </div>
         </form>
     </div>
 </div>
 
-@section Scripts {
-    <script>
+<style>
+    /* Shared styles across tabs are already in site.css or Dashboard.cshtml, but adding tab-specific refinements */
+    .tab-view-container { padding: 8px 0; }
+    .card-surface { background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 16px; overflow: hidden; }
+    .table-responsive { width: 100%; }
+    
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th { background: #F9FAFB; padding: 16px 24px; text-align: left; font-size: 0.75rem; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #E5E7EB; }
+    .data-table td { padding: 20px 24px; font-size: 0.9rem; color: #111827; border-bottom: 1px solid #F3F4F6; }
+    .data-table tr:last-child td { border-bottom: none; }
+    
+    .role-badge { padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; text-transform: capitalize; }
+    .role-admin { background: #EEF2FF; color: #4338CA; }
+    .role-editor { background: #FDF2F8; color: #9D174D; }
+    .role-member { background: #F3F4F6; color: #374151; }
+
+    .btn-remove { background: transparent; border: none; color: #EF4444; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; padding: 6px 12px; border-radius: 6px; }
+    .btn-remove:hover { background: #FEF2F2; }
+
+    /* Modal refined */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(17, 24, 39, 0.4); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+    .modal-card { background: white; padding: 40px; border-radius: 24px; width: 90%; max-width: 440px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
+    .modal-card h3 { font-size: 1.5rem; font-weight: 800; color: #111827; margin-bottom: 8px; }
+    .modal-sub { color: #6B7280; margin-bottom: 32px; font-size: 0.95rem; }
+    .form-input-group { margin-bottom: 24px; }
+    .form-input-group label { display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #6B7280; margin-bottom: 8px; }
+    .form-input-group input, .form-input-group select { width: 100%; padding: 12px 16px; border: 1px solid #E5E7EB; border-radius: 10px; font-size: 1rem; outline: none; }
+    .form-input-group input:focus { border-color: #4F46E5; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); }
+    .modal-footer-btns { display: flex; gap: 12px; margin-top: 32px; }
+    .btn-cancel { flex: 1; padding: 14px; background: #F3F4F6; border: none; border-radius: 12px; font-weight: 700; color: #374151; cursor: pointer; }
+    .btn-submit { flex: 2; padding: 14px; background: #4F46E5; border: none; border-radius: 12px; font-weight: 700; color: white; cursor: pointer; }
+</style>
+
+<script>
+    (function() {
         const orgId = '@Model.Id';
         const apiBase = `/api/organization/${orgId}`;
 
@@ -66,17 +106,16 @@
                     body: JSON.stringify({ email, roles: [role] })
                 });
 
-                const data = await res.json();
                 if (res.ok) {
-                    alert('Invitation sent!');
                     document.getElementById('inviteForm').reset();
                     document.getElementById('inviteModal').style.display = 'none';
                     loadMembers();
                 } else {
+                    const data = await res.json();
                     alert('Error: ' + (data.error || 'Failed to invite member'));
                 }
             } catch (err) {
-                alert('Failed to invite member: ' + err.message);
+                alert('Failed to invite member');
             }
         });
 
@@ -88,24 +127,31 @@
 
                 const list = document.getElementById('membersList');
                 if (!members || members.length === 0) {
-                    list.innerHTML = '<p style="color: #999; padding: 20px; margin: 0;">No members yet.</p>';
+                    list.innerHTML = '<div class="loading-state"><p>No members found.</p></div>';
                 } else {
                     list.innerHTML = `
-                        <table style="width: 100%; border-collapse: collapse;">
+                        <table class="data-table">
                             <thead>
-                                <tr style="border-bottom: 2px solid #e0e0e0;">
-                                    <th style="text-align: left; padding: 10px;">Email</th>
-                                    <th style="text-align: left; padding: 10px;">Roles</th>
-                                    <th style="text-align: left; padding: 10px;">Actions</th>
+                                <tr>
+                                    <th>Member</th>
+                                    <th>Role</th>
+                                    <th>Joined</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${members.map(m => `
-                                    <tr style="border-bottom: 1px solid #e0e0e0;">
-                                        <td style="padding: 10px;">${m.email || m.name}</td>
-                                        <td style="padding: 10px;">${(m.roles || []).join(', ') || 'member'}</td>
-                                        <td style="padding: 10px;">
-                                            <button onclick="removeMember('${m['$id']}')" style="padding: 5px 10px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Remove</button>
+                                    <tr>
+                                        <td>
+                                            <div style="display: flex; align-items: center; gap: 12px;">
+                                                <img src="https://ui-avatars.com/api/?name=${m.email || m.name}&background=F3F4F6&color=4F46E5" style="width: 32px; height: 32px; border-radius: 50%;">
+                                                <span>${m.email || m.name}</span>
+                                            </div>
+                                        </td>
+                                        <td><span class="role-badge role-${(m.roles || ['member'])[0]}">${(m.roles || ['member'])[0]}</span></td>
+                                        <td class="subtitle" style="font-size: 0.8rem;">${new Date(m['$createdAt']).toLocaleDateString()}</td>
+                                        <td>
+                                            <button onclick="removeMember('${m['$id']}')" class="btn-remove">Remove</button>
                                         </td>
                                     </tr>
                                 `).join('')}
@@ -113,7 +159,6 @@
                         </table>
                     `;
                 }
-
                 updateCounter(members.length);
             } catch (err) {
                 console.error('Failed to load members:', err);
@@ -124,30 +169,26 @@
             try {
                 const res = await fetch(`${apiBase}/billing`);
                 const data = await res.json();
-                document.getElementById('membersCounter').textContent = `Members: ${count} / ${data.limits.members}`;
-
+                document.getElementById('membersCounter').textContent = `Organization Workspace: ${count} of ${data.limits.members} active members`;
+                
                 const btn = document.getElementById('inviteMemberBtn');
                 if (count >= data.limits.members) {
                     btn.disabled = true;
                     btn.style.opacity = '0.5';
-                    btn.title = `You've reached the member limit for ${data.plan} plan`;
+                    btn.title = 'Member limit reached';
                 }
-            } catch (err) {
-                console.error('Failed to get billing info:', err);
-            }
+            } catch (err) { console.error(err); }
         }
 
-        async function removeMember(membershipId) {
-            if (confirm('Remove this member?')) {
+        window.removeMember = async function(id) {
+            if (confirm('Are you sure you want to remove this member? They will lose access immediately.')) {
                 try {
-                    await fetch(`${apiBase}/members/${membershipId}`, { method: 'DELETE' });
+                    await fetch(`${apiBase}/members/${id}`, { method: 'DELETE' });
                     loadMembers();
-                } catch (err) {
-                    alert('Failed to remove member');
-                }
+                } catch (err) { alert('Failed to remove member'); }
             }
         }
 
         loadMembers();
-    </script>
-}
+    })();
+</script>

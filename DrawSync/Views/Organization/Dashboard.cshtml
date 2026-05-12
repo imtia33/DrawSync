@@ -4,152 +4,254 @@
     ViewData["Title"] = Model.Name + " - Organization";
 }
 
+<div class="org-dashboard-wrapper">
+    <div class="dashboard-container">
+        <!-- Hero Section -->
+        <header class="org-hero">
+            <div class="hero-content">
+                <div class="hero-left">
+                    <div class="org-icon">@Model.Name.Substring(0, 1)</div>
+                    <div class="org-info">
+                        <h1>@Model.Name</h1>
+                        <p class="org-meta">Organization Workspace</p>
+                    </div>
+                </div>
+                <div class="hero-right">
+                    <span class="plan-badge @Model.Plan.ToLower()">
+                        <i class="bi bi-shield-check"></i>
+                        @Model.Plan Plan
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="org-nav">
+            <div class="nav-scroll-wrapper">
+                <button class="tab-btn active" data-tab="drawings">
+                    <i class="bi bi-grid-1x2"></i> Drawings
+                </button>
+                <button class="tab-btn" data-tab="members">
+                    <i class="bi bi-people"></i> Members
+                </button>
+                <button class="tab-btn" data-tab="billing">
+                    <i class="bi bi-credit-card"></i> Billing
+                </button>
+                <button class="tab-btn" data-tab="usage">
+                    <i class="bi bi-bar-chart"></i> Usage
+                </button>
+                <button class="tab-btn" data-tab="invoices">
+                    <i class="bi bi-receipt"></i> Invoices
+                </button>
+                <button class="tab-btn" data-tab="settings">
+                    <i class="bi bi-gear"></i> Settings
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="org-main-content">
+            <!-- Drawings Tab -->
+            <div id="drawings" class="tab-pane active">
+                <partial name="~/Views/Organization/Tabs/DrawingsTab.cshtml" model="Model" />
+            </div>
+
+            <!-- Members Tab -->
+            <div id="members" class="tab-pane">
+                <partial name="~/Views/Organization/Tabs/MembersTab.cshtml" model="Model" />
+            </div>
+
+            <!-- Billing Tab -->
+            <div id="billing" class="tab-pane">
+                <partial name="~/Views/Organization/Tabs/BillingTab.cshtml" model="Model" />
+            </div>
+
+            <!-- Usage Tab -->
+            <div id="usage" class="tab-pane">
+                <partial name="~/Views/Organization/Tabs/UsageTab.cshtml" model="Model" />
+            </div>
+
+            <!-- Invoices Tab -->
+            <div id="invoices" class="tab-pane">
+                <partial name="~/Views/Organization/Tabs/InvoicesTab.cshtml" model="Model" />
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="settings" class="tab-pane">
+                <partial name="~/Views/Organization/Tabs/SettingsTab.cshtml" model="Model" />
+            </div>
+        </main>
+    </div>
+</div>
+
 <style>
-    .org-dashboard {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 20px;
+    /* Dashboard Theme */
+    :root {
+        --org-bg: #F9FAFB;
+        --org-card: #FFFFFF;
+        --org-text: #111827;
+        --org-text-muted: #6B7280;
+        --org-primary: #4F46E5;
+        --org-border: #E5E7EB;
+        --radius-lg: 16px;
+        --radius-md: 12px;
     }
 
-    .org-header {
+    body { background-color: var(--org-bg) !important; }
+
+    .org-dashboard-wrapper {
+        padding: 40px 20px;
+        font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    .dashboard-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    /* Hero Section */
+    .org-hero {
+        margin-bottom: 32px;
+    }
+
+    .hero-content {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
-        border-bottom: 1px solid #e0e0e0;
-        padding-bottom: 20px;
+        background: var(--org-card);
+        padding: 32px;
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--org-border);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
 
-    .org-title h1 {
-        margin: 0;
-        font-size: 28px;
-    }
+    .hero-left { display: flex; align-items: center; gap: 24px; }
 
-    .org-badge {
-        display: inline-block;
-        padding: 6px 12px;
-        border-radius: 4px;
-        font-size: 12px;
-        font-weight: 600;
-        text-transform: uppercase;
-    }
-
-    .org-badge.free {
-        background-color: #e3f2fd;
-        color: #1976d2;
-    }
-
-    .org-badge.pro {
-        background-color: #f3e5f5;
-        color: #7b1fa2;
-    }
-
-    .nav-tabs {
+    .org-icon {
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: white;
         display: flex;
-        gap: 0;
-        border-bottom: 2px solid #e0e0e0;
-        margin-bottom: 30px;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        font-weight: 800;
+        border-radius: 16px;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
     }
 
-    .nav-tabs button {
-        padding: 15px 20px;
+    .org-info h1 {
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: var(--org-text);
+        margin: 0 0 4px 0;
+        letter-spacing: -0.5px;
+    }
+
+    .org-meta {
+        color: var(--org-text-muted);
+        font-size: 0.95rem;
+        margin: 0;
+    }
+
+    .plan-badge {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 100px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .plan-badge.free { background: #F3F4F6; color: #374151; border: 1px solid #E5E7EB; }
+    .plan-badge.pro { background: #EEF2FF; color: #4338CA; border: 1px solid #C7D2FE; }
+
+    /* Navigation */
+    .org-nav {
+        margin-bottom: 32px;
+        border-bottom: 1px solid var(--org-border);
+        padding-bottom: 2px;
+    }
+
+    .nav-scroll-wrapper {
+        display: flex;
+        gap: 32px;
+        overflow-x: auto;
+    }
+
+    .tab-btn {
+        background: transparent;
         border: none;
-        background: none;
-        font-size: 14px;
-        font-weight: 500;
+        padding: 12px 4px;
+        color: var(--org-text-muted);
+        font-weight: 600;
+        font-size: 0.95rem;
         cursor: pointer;
-        color: #666;
-        border-bottom: 3px solid transparent;
-        margin-bottom: -2px;
-        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        position: relative;
+        transition: all 0.2s;
+        white-space: nowrap;
     }
 
-    .nav-tabs button.active {
-        color: var(--primary);
-        border-bottom-color: var(--primary);
+    .tab-btn i { font-size: 1.1rem; }
+    .tab-btn:hover { color: var(--org-text); }
+    
+    .tab-btn.active {
+        color: var(--org-primary);
     }
 
-    .nav-tabs button:hover {
-        color: var(--primary);
+    .tab-btn.active::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: var(--org-primary);
     }
 
-    .tab-content {
+    /* Tab Content */
+    .tab-pane {
         display: none;
+        animation: fadeIn 0.3s ease-out;
     }
 
-    .tab-content.active {
+    .tab-pane.active {
         display: block;
     }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .hero-content { flex-direction: column; align-items: flex-start; gap: 20px; }
+        .hero-right { width: 100%; }
+        .plan-badge { align-self: flex-start; }
+    }
 </style>
-
-<div class="org-dashboard">
-    <div class="org-header">
-        <div class="org-title">
-            <h1>@Model.Name</h1>
-        </div>
-        <div>
-            <span class="org-badge @Model.Plan.ToLower()">@Model.Plan Plan</span>
-        </div>
-    </div>
-
-    <div class="nav-tabs">
-        <button class="tab-btn active" data-tab="drawings">Drawings</button>
-        <button class="tab-btn" data-tab="members">Members</button>
-        <button class="tab-btn" data-tab="billing">Billing</button>
-        <button class="tab-btn" data-tab="usage">Usage</button>
-        <button class="tab-btn" data-tab="invoices">Invoices</button>
-        <button class="tab-btn" data-tab="settings">Settings</button>
-    </div>
-
-    <!-- Drawings Tab -->
-    <div id="drawings" class="tab-content active">
-        <partial name="~/Views/Organization/Tabs/DrawingsTab.cshtml" model="Model" />
-    </div>
-
-    <!-- Members Tab -->
-    <div id="members" class="tab-content">
-        <partial name="~/Views/Organization/Tabs/MembersTab.cshtml" model="Model" />
-    </div>
-
-    <!-- Billing Tab -->
-    <div id="billing" class="tab-content">
-        <partial name="~/Views/Organization/Tabs/BillingTab.cshtml" model="Model" />
-    </div>
-
-    <!-- Usage Tab -->
-    <div id="usage" class="tab-content">
-        <partial name="~/Views/Organization/Tabs/UsageTab.cshtml" model="Model" />
-    </div>
-
-    <!-- Invoices Tab -->
-    <div id="invoices" class="tab-content">
-        <partial name="~/Views/Organization/Tabs/InvoicesTab.cshtml" model="Model" />
-    </div>
-
-    <!-- Settings Tab -->
-    <div id="settings" class="tab-content">
-        <partial name="~/Views/Organization/Tabs/SettingsTab.cshtml" model="Model" />
-    </div>
-</div>
 
 @section Scripts {
     <script>
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                // Hide all tabs
-                document.querySelectorAll('.tab-content').forEach(tab => {
-                    tab.classList.remove('active');
-                });
-
-                // Remove active class from all buttons
-                document.querySelectorAll('.tab-btn').forEach(b => {
-                    b.classList.remove('active');
-                });
-
-                // Show selected tab
-                const tabName = btn.getAttribute('data-tab');
-                document.getElementById(tabName).classList.add('active');
+                const target = btn.getAttribute('data-tab');
+                
+                // Toggle Buttons
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+
+                // Toggle Panes
+                document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+                document.getElementById(target).classList.add('active');
             });
         });
     </script>

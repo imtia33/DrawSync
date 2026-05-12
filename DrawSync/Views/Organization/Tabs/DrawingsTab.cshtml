@@ -1,79 +1,179 @@
 @model DrawSync.Models.Organization
 
-<div class="drawings-section">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <div>
+<div class="drawings-view">
+    <div class="view-header">
+        <div class="header-text">
             <h2>Drawings</h2>
-            <small id="drawingsCounter" style="color: #666;"></small>
+            <p class="subtitle" id="drawingsCounter">Loading workspace statistics...</p>
         </div>
-        <button id="createDrawingBtn" class="btn-primary-custom" style="padding: 10px 20px; font-size: 14px;">
-            + New Drawing
-        </button>
+        <a href="/whiteboard" class="btn-new-drawing">
+            <i class="bi bi-plus-lg"></i>
+            New Drawing
+        </a>
     </div>
 
-    <div id="drawingsList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
-        <p style="color: #999;">Loading drawings...</p>
-    </div>
-</div>
-
-<!-- Create Drawing Modal -->
-<div id="createDrawingModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
-    <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; width: 90%;">
-        <h3>Create New Drawing</h3>
-        <form id="createDrawingForm">
-            <div class="form-group" style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Name</label>
-                <input type="text" id="drawingName" placeholder="My Drawing" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-            </div>
-            <div class="form-group" style="margin-bottom: 20px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Description (optional)</label>
-                <textarea id="drawingDesc" placeholder="Optional description" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; height: 80px;"></textarea>
-            </div>
-            <div style="display: flex; gap: 10px;">
-                <button type="submit" class="btn-primary-custom" style="flex: 1;">Create</button>
-                <button type="button" id="cancelCreateBtn" class="btn-secondary-custom" style="flex: 1;">Cancel</button>
-            </div>
-        </form>
+    <div id="drawingsList" class="drawings-grid">
+        <!-- Loading State -->
+        <div class="loading-state">
+            <div class="spinner-border text-indigo" role="status"></div>
+            <p>Fetching your workspace drawings...</p>
+        </div>
     </div>
 </div>
 
-@section Scripts {
-    <script>
+<style>
+    .drawings-view {
+        padding: 8px 0;
+    }
+
+    .view-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+    }
+
+    .header-text h2 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #111827;
+        margin: 0 0 4px 0;
+    }
+
+    .subtitle {
+        color: #6B7280;
+        font-size: 0.9rem;
+        margin: 0;
+    }
+
+    .btn-new-drawing {
+        background: #4F46E5;
+        color: white !important;
+        text-decoration: none;
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.2s;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+    }
+
+    .btn-new-drawing:hover {
+        background: #4338CA;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(79, 70, 229, 0.3);
+    }
+
+    .drawings-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 24px;
+    }
+
+    .drawing-card {
+        background: #FFFFFF;
+        border: 1px solid #E5E7EB;
+        border-radius: 16px;
+        padding: 24px;
+        position: relative;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+    }
+
+    .drawing-card:hover {
+        border-color: #4F46E5;
+        box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.05);
+        transform: translateY(-4px);
+    }
+
+    .card-icon {
+        width: 48px;
+        height: 48px;
+        background: #F3F4F6;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #4F46E5;
+        font-size: 1.25rem;
+        margin-bottom: 20px;
+        transition: all 0.2s;
+    }
+
+    .drawing-card:hover .card-icon {
+        background: #EEF2FF;
+    }
+
+    .drawing-card h4 {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #111827;
+        margin: 0 0 8px 0;
+    }
+
+    .drawing-card p {
+        color: #6B7280;
+        font-size: 0.9rem;
+        line-height: 1.5;
+        margin: 0 0 20px 0;
+        height: 40px;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    .card-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 16px;
+        border-top: 1px solid #F3F4F6;
+    }
+
+    .date-meta {
+        font-size: 0.75rem;
+        color: #9CA3AF;
+        font-weight: 500;
+    }
+
+    .btn-delete {
+        background: transparent;
+        border: none;
+        color: #EF4444;
+        font-size: 1.1rem;
+        padding: 4px;
+        border-radius: 6px;
+        cursor: pointer;
+        opacity: 0;
+        transition: all 0.2s;
+    }
+
+    .drawing-card:hover .btn-delete {
+        opacity: 1;
+    }
+
+    .btn-delete:hover {
+        background: #FEF2F2;
+    }
+
+    .loading-state {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 60px 0;
+        color: #6B7280;
+    }
+
+    .text-indigo { color: #4F46E5 !important; }
+</style>
+
+<script>
+    (function() {
         const orgId = '@Model.Id';
         const apiBase = `/api/organization/${orgId}`;
-
-        document.getElementById('createDrawingBtn').addEventListener('click', () => {
-            document.getElementById('createDrawingModal').style.display = 'flex';
-        });
-
-        document.getElementById('cancelCreateBtn').addEventListener('click', () => {
-            document.getElementById('createDrawingModal').style.display = 'none';
-        });
-
-        document.getElementById('createDrawingForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const name = document.getElementById('drawingName').value;
-            const description = document.getElementById('drawingDesc').value;
-
-            try {
-                const res = await fetch(`${apiBase}/drawings`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, description })
-                });
-
-                const data = await res.json();
-                if (res.ok) {
-                    document.getElementById('createDrawingForm').reset();
-                    document.getElementById('createDrawingModal').style.display = 'none';
-                    loadDrawings();
-                } else {
-                    alert('Error: ' + (data.error || 'Failed to create drawing'));
-                }
-            } catch (err) {
-                alert('Failed to create drawing: ' + err.message);
-            }
-        });
 
         async function loadDrawings() {
             try {
@@ -82,21 +182,27 @@
 
                 const list = document.getElementById('drawingsList');
                 if (!drawings || drawings.length === 0) {
-                    list.innerHTML = '<p style="color: #999;">No drawings yet. Create one to get started!</p>';
+                    list.innerHTML = `
+                        <div class="loading-state">
+                            <i class="bi bi-canvas" style="font-size: 3rem; opacity: 0.2;"></i>
+                            <p style="margin-top: 16px;">No drawings found in this workspace.</p>
+                        </div>
+                    `;
                 } else {
                     list.innerHTML = drawings.map(d => `
-                        <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; cursor: pointer; transition: all 0.3s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='none'">
-                            <h4 style="margin-top: 0;">${d.name}</h4>
-                            <p style="color: #666; margin: 10px 0; font-size: 14px;">${d.description || 'No description'}</p>
-                            <small style="color: #999;">Created ${new Date(d['$createdAt']).toLocaleDateString()}</small>
-                            <div style="margin-top: 15px; display: flex; gap: 10px;">
-                                <button onclick="deleteDrawing('${d['$id']}')" style="padding: 5px 10px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Delete</button>
+                        <div class="drawing-card" onclick="window.location.href='/whiteboard/board/${d['$id']}'">
+                            <div class="card-icon"><i class="bi bi-brush"></i></div>
+                            <h4>${d.name}</h4>
+                            <p>${d.description || 'No description provided for this drawing.'}</p>
+                            <div class="card-footer">
+                                <span class="date-meta">Created ${new Date(d['$createdAt']).toLocaleDateString()}</span>
+                                <button class="btn-delete" onclick="event.stopPropagation(); deleteDrawing('${d['$id']}')" title="Delete Drawing">
+                                    <i class="bi bi-trash"></i>
+                                </button>
                             </div>
                         </div>
                     `).join('');
                 }
-
-                // Update counter with limits
                 updateCounter();
             } catch (err) {
                 console.error('Failed to load drawings:', err);
@@ -107,23 +213,15 @@
             try {
                 const res = await fetch(`${apiBase}/billing`);
                 const data = await res.json();
-                document.getElementById('drawingsCounter').textContent = `Drawings: ${document.querySelectorAll('#drawingsList > div').length} / ${data.limits.drawings}`;
-
-                // Disable button if limit reached
-                const btn = document.getElementById('createDrawingBtn');
-                const count = document.querySelectorAll('#drawingsList > div').length;
-                if (count >= data.limits.drawings) {
-                    btn.disabled = true;
-                    btn.style.opacity = '0.5';
-                    btn.title = `You\'ve reached the limit for ${data.plan} plan`;
-                }
+                const count = document.querySelectorAll('#drawingsList .drawing-card').length;
+                document.getElementById('drawingsCounter').textContent = `Workspace Usage: ${count} of ${data.limits.drawings} active drawings`;
             } catch (err) {
                 console.error('Failed to get billing info:', err);
             }
         }
 
-        async function deleteDrawing(id) {
-            if (confirm('Delete this drawing?')) {
+        window.deleteDrawing = async function(id) {
+            if (confirm('Are you sure you want to delete this drawing? This action is permanent.')) {
                 try {
                     await fetch(`${apiBase}/drawings/${id}`, { method: 'DELETE' });
                     loadDrawings();
@@ -134,5 +232,5 @@
         }
 
         loadDrawings();
-    </script>
-}
+    })();
+</script>

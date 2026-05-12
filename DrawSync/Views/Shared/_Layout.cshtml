@@ -13,7 +13,7 @@
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm">
             <div class="container">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">DrawSync</a>
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">DRAW<span>SYNC</span></a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -21,30 +21,25 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                            <a class="nav-link" asp-controller="Home" asp-action="Index">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Whiteboard" asp-action="Index" style="color: #4f46e5; font-weight: 600;">Whiteboard</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
                         </li>
                     </ul>
-                    <ul class="navbar-nav align-items-center">
+                    <ul class="navbar-nav align-items-center gap-3">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            @if (User.IsInRole("Admin"))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link" asp-controller="Home" asp-action="AdminOnly">Admin</a>
-                                </li>
-                            }
-                            <li class="nav-item">
-                                <a class="nav-link" asp-controller="Profile" asp-action="Index">Profile</a>
+                            <li class="nav-item d-flex align-items-center gap-2">
+                                <img src="https://ui-avatars.com/api/?name=@User.Identity.Name&background=4F46E5&color=fff" alt="User" style="width: 32px; height: 32px; border-radius: 50%;">
+                                <span class="nav-link" style="color: #111827 !important; font-weight: 600;">@User.Identity.Name</span>
                             </li>
                             <li class="nav-item">
-                                <span class="nav-link text-main">Hello, @User.Identity.Name!</span>
-                            </li>
-                            <li class="nav-item ms-lg-3">
                                 <form asp-controller="Auth" asp-action="Logout" method="post" class="form-inline">
-                                    <button type="submit" class="btn-outline-custom py-1 px-3" style="font-size: 0.75rem;">Logout</button>
+                                    <button type="submit" class="btn-logout-small">Logout</button>
                                 </form>
                             </li>
                         }
@@ -53,8 +48,8 @@
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Auth" asp-action="Login">Login</a>
                             </li>
-                            <li class="nav-item ms-lg-3">
-                                <a asp-controller="Auth" asp-action="Register" class="btn-primary-custom text-decoration-none">Register</a>
+                            <li class="nav-item">
+                                <a asp-controller="Auth" asp-action="Register" class="btn-primary-custom" style="padding: 0.5rem 1.5rem; font-size: 0.85rem;">Register</a>
                             </li>
                         }
                     </ul>
@@ -62,8 +57,8 @@
             </div>
         </nav>
     </header>
-    <div class="container">
-        <main role="main" class="pb-3">
+    <div class="main-content-container">
+        <main role="main">
             @RenderBody()
         </main>
     </div>

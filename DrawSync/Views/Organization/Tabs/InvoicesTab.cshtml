@@ -1,15 +1,46 @@
 @model DrawSync.Models.Organization
 
-<div class="invoices-section">
-    <h2>Invoices</h2>
+<div class="tab-view-container">
+    <div class="view-header">
+        <div class="header-text">
+            <h2>Payment History</h2>
+            <p class="subtitle">Review your past invoices and current billing status.</p>
+        </div>
+    </div>
 
-    <div id="invoicesList" style="margin-bottom: 20px;">
-        <p style="color: #999;">Loading invoices...</p>
+    <div class="card-surface">
+        <div id="invoicesList" class="table-responsive">
+            <div class="loading-state">
+                <div class="spinner-border text-indigo" role="status"></div>
+                <p>Fetching transaction records...</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="billing-support-footer">
+        <p><i class="bi bi-question-circle"></i> Have questions about a charge? <a href="#">Contact Billing Support</a></p>
     </div>
 </div>
 
-@section Scripts {
-    <script>
+<style>
+    .status-pill { padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+    .status-paid { background: #DCFCE7; color: #166534; }
+    .status-pending { background: #FEF3C7; color: #92400E; }
+    .status-failed { background: #FEE2E2; color: #991B1B; }
+    
+    .amount-text { font-weight: 700; color: #111827; }
+    .currency-tag { font-size: 0.75rem; color: #9CA3AF; margin-left: 4px; font-weight: 500; }
+    
+    .btn-download-invoice { background: transparent; border: 1px solid #E5E7EB; color: #6B7280; padding: 6px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-download-invoice:hover { background: #F9FAFB; color: #111827; border-color: #D1D5DB; }
+
+    .billing-support-footer { margin-top: 24px; text-align: center; color: #9CA3AF; font-size: 0.85rem; }
+    .billing-support-footer a { color: #4F46E5; text-decoration: none; font-weight: 600; }
+    .billing-support-footer a:hover { text-decoration: underline; }
+</style>
+
+<script>
+    (function() {
         const orgId = '@Model.Id';
         const apiBase = `/api/organization/${orgId}`;
 
@@ -20,50 +51,44 @@
 
                 const list = document.getElementById('invoicesList');
                 if (!invoices || invoices.length === 0) {
-                    list.innerHTML = '<p style="color: #999;">No invoices yet.</p>';
+                    list.innerHTML = `
+                        <div class="loading-state">
+                            <i class="bi bi-receipt" style="font-size: 3rem; opacity: 0.2;"></i>
+                            <p style="margin-top: 16px;">No invoices found yet. When you upgrade or renew, they'll appear here.</p>
+                        </div>
+                    `;
                     return;
                 }
 
                 list.innerHTML = `
-                    <table style="width: 100%; border-collapse: collapse;">
+                    <table class="data-table">
                         <thead>
-                            <tr style="border-bottom: 2px solid #e0e0e0;">
-                                <th style="text-align: left; padding: 10px;">Period</th>
-                                <th style="text-align: left; padding: 10px;">Amount</th>
-                                <th style="text-align: left; padding: 10px;">Status</th>
-                                <th style="text-align: left; padding: 10px;">Date</th>
+                            <tr>
+                                <th>Invoice Period</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
                             ${invoices.map(inv => `
-                                <tr style="border-bottom: 1px solid #e0e0e0;">
-                                    <td style="padding: 10px;">${inv.period}</td>
-                                    <td style="padding: 10px;">$${inv.amount.toFixed(2)} ${inv.currency}</td>
-                                    <td style="padding: 10px;">
-                                        <span style="padding: 4px 8px; border-radius: 4px; background: ${getStatusColor(inv.status)}; color: white; font-size: 12px;">
-                                            ${inv.status.toUpperCase()}
-                                        </span>
+                                <tr>
+                                    <td><span style="font-weight: 600; color: #111827;">${inv.period}</span></td>
+                                    <td><span class="amount-text">$${inv.amount.toFixed(2)}</span><span class="currency-tag">${inv.currency}</span></td>
+                                    <td><span class="status-pill status-${inv.status}">${inv.status}</span></td>
+                                    <td class="subtitle" style="font-size: 0.8rem;">${new Date(inv['$createdAt']).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                                    <td style="text-align: right;">
+                                        <button class="btn-download-invoice"><i class="bi bi-file-earmark-arrow-down"></i> PDF</button>
                                     </td>
-                                    <td style="padding: 10px;">${new Date(inv['$createdAt']).toLocaleDateString()}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
                     </table>
                 `;
-            } catch (err) {
-                console.error('Failed to load invoices:', err);
-            }
-        }
-
-        function getStatusColor(status) {
-            switch (status) {
-                case 'paid': return '#4caf50';
-                case 'pending': return '#ff9800';
-                case 'failed': return '#f44336';
-                default: return '#999';
-            }
+            } catch (err) { console.error(err); }
         }
 
         loadInvoices();
-    </script>
-}
+    })();
+</script>

@@ -1,133 +1,180 @@
 @model DrawSync.Models.Organization
 
-<div class="billing-section">
-    <h2>Billing & Plan</h2>
-
-    <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-            <div>
-                <h3 style="margin: 0 0 10px 0;">Current Plan</h3>
-                <p style="margin: 0; font-size: 18px; font-weight: 600;">@Model.Plan.ToUpper()</p>
-                <p style="color: #666; margin: 5px 0 0 0; font-size: 14px;">@GetPlanDescription(Model.Plan)</p>
-            </div>
-            @if (Model.Plan == "free")
-            {
-                <button id="upgradeBtn" class="btn-primary-custom" style="padding: 12px 24px;">Upgrade to Pro</button>
-            }
-            else
-            {
-                <span style="color: #4caf50; font-weight: 600;">✓ Pro Plan Active</span>
-            }
+<div class="tab-view-container">
+    <div class="view-header">
+        <div class="header-text">
+            <h2>Billing & Subscription</h2>
+            <p class="subtitle">Manage your plan and resource allocation.</p>
         </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-        <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;">
-            <h3 style="margin-top: 0;">Free Plan</h3>
-            <ul style="margin: 15px 0; padding-left: 20px; font-size: 14px;">
-                <li><strong>1 Drawing</strong></li>
-                <li><strong>3 Team Members</strong></li>
-                <li>Basic collaboration</li>
-                <li>Community support</li>
-            </ul>
+    <div class="billing-grid">
+        <!-- Current Plan Card -->
+        <div class="card-surface plan-summary-card">
+            <div class="card-header-accent">
+                <i class="bi bi-rocket-takeoff"></i>
+                <span>Active Plan</span>
+            </div>
+            <div class="plan-details">
+                <h3 class="plan-name">@Model.Plan.ToUpper()</h3>
+                <p class="plan-desc">@GetPlanDescription(Model.Plan)</p>
+                <div class="status-indicator @(Model.Plan == "pro" ? "active" : "")">
+                    <i class="bi bi-check-circle-fill"></i>
+                    @(Model.Plan == "pro" ? "Subscription Active" : "Limited Free Access")
+                </div>
+            </div>
             @if (Model.Plan == "free")
             {
-                <span style="color: #2196F3; font-weight: 600;">Your current plan</span>
+                <button id="upgradeBtn" class="btn-upgrade-main">
+                    Upgrade to Professional
+                    <i class="bi bi-arrow-right-short"></i>
+                </button>
             }
         </div>
 
-        <div style="border: 2px solid #4caf50; border-radius: 8px; padding: 20px; background: #f0f8f4;">
-            <h3 style="margin-top: 0; color: #4caf50;">Pro Plan</h3>
-            <ul style="margin: 15px 0; padding-left: 20px; font-size: 14px;">
-                <li><strong>5 Drawings</strong></li>
-                <li><strong>15 Team Members</strong></li>
-                <li>Advanced collaboration</li>
-                <li>Priority support</li>
-            </ul>
-            @if (Model.Plan == "pro")
-            {
-                <span style="color: #4caf50; font-weight: 600;">✓ Your current plan</span>
-            }
-            else
-            {
-                <button id="upgradeBtn2" class="btn-primary-custom" style="padding: 10px 20px; background: #4caf50;">Upgrade Now</button>
-            }
+        <!-- Limits Breakdown -->
+        <div class="card-surface usage-stats-card">
+            <h3>Resource Usage</h3>
+            <div class="stats-list">
+                <div class="stat-item">
+                    <div class="stat-label">Drawings</div>
+                    <div class="stat-value" id="drawingsUsage">--</div>
+                    <div class="stat-meta">Created</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Collaborators</div>
+                    <div class="stat-value" id="membersUsage">--</div>
+                    <div class="stat-meta">Active</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Next Renewal</div>
+                    <div class="stat-value date-val" id="renewDate">--</div>
+                    <div class="stat-meta">Auto-renew</div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; background: #f9f9f9;">
-        <h3>Usage Details</h3>
-        <p style="color: #666; margin-bottom: 15px;">Your current organization usage:</p>
-        <div id="usageDetails" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-            <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #2196F3;">
-                <p style="margin: 0; color: #666; font-size: 12px;">DRAWINGS</p>
-                <p id="drawingsUsage" style="margin: 5px 0 0 0; font-size: 18px; font-weight: 600;">--</p>
+    <!-- Comparison Section -->
+    <div class="comparison-section">
+        <h3>Available Plans</h3>
+        <div class="plans-row">
+            <div class="plan-card @(Model.Plan == "free" ? "current" : "")">
+                <div class="plan-tier">Free</div>
+                <div class="plan-price">$0<span>/mo</span></div>
+                <ul class="plan-features">
+                    <li><i class="bi bi-check2"></i> 1 Active Drawing</li>
+                    <li><i class="bi bi-check2"></i> 3 Team Members</li>
+                    <li><i class="bi bi-check2"></i> Community Support</li>
+                </ul>
+                @if (Model.Plan == "free") { <div class="current-label">Your Current Plan</div> }
             </div>
-            <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #FF9800;">
-                <p style="margin: 0; color: #666; font-size: 12px;">TEAM MEMBERS</p>
-                <p id="membersUsage" style="margin: 5px 0 0 0; font-size: 18px; font-weight: 600;">--</p>
-            </div>
-            <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #9C27B0;">
-                <p style="margin: 0; color: #666; font-size: 12px;">RENEWS</p>
-                <p id="renewDate" style="margin: 5px 0 0 0; font-size: 14px; font-weight: 600;">--</p>
+
+            <div class="plan-card featured @(Model.Plan == "pro" ? "current" : "")">
+                <div class="premium-badge">Most Popular</div>
+                <div class="plan-tier">Professional</div>
+                <div class="plan-price">$12<span>/mo</span></div>
+                <ul class="plan-features">
+                    <li><i class="bi bi-check2"></i> 5 Active Drawings</li>
+                    <li><i class="bi bi-check2"></i> 15 Team Members</li>
+                    <li><i class="bi bi-check2"></i> Priority Drawing Sync</li>
+                    <li><i class="bi bi-check2"></i> 24/7 Priority Support</li>
+                </ul>
+                @if (Model.Plan == "pro") { 
+                    <div class="current-label">Your Current Plan</div> 
+                } else {
+                    <button id="upgradeBtn2" class="btn-upgrade-alt">Upgrade Now</button>
+                }
             </div>
         </div>
     </div>
 </div>
 
+<style>
+    .billing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 40px; }
+    
+    .plan-summary-card { padding: 32px; display: flex; flex-direction: column; justify-content: space-between; min-height: 240px; }
+    .card-header-accent { display: flex; align-items: center; gap: 8px; color: #4F46E5; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 20px; }
+    .plan-name { font-size: 2rem; font-weight: 800; color: #111827; margin: 0 0 8px 0; }
+    .plan-desc { color: #6B7280; font-size: 0.95rem; margin-bottom: 24px; line-height: 1.5; }
+    
+    .status-indicator { display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600; color: #9CA3AF; }
+    .status-indicator.active { color: #10B981; }
+
+    .btn-upgrade-main { background: #4F46E5; color: white; border: none; border-radius: 12px; padding: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; margin-top: 24px; }
+    .btn-upgrade-main:hover { background: #4338CA; transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgba(79, 70, 229, 0.3); }
+
+    .usage-stats-card { padding: 32px; }
+    .usage-stats-card h3 { font-size: 1.1rem; font-weight: 700; color: #111827; margin: 0 0 24px 0; }
+    .stats-list { display: flex; flex-direction: column; gap: 20px; }
+    .stat-item { display: grid; grid-template-columns: 140px 1fr 60px; align-items: center; }
+    .stat-label { font-size: 0.85rem; font-weight: 600; color: #6B7280; }
+    .stat-value { font-size: 1.25rem; font-weight: 800; color: #111827; }
+    .stat-value.date-val { font-size: 1rem; }
+    .stat-meta { font-size: 0.75rem; color: #9CA3AF; text-align: right; }
+
+    .comparison-section h3 { font-size: 1.25rem; font-weight: 800; color: #111827; margin-bottom: 24px; }
+    .plans-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .plan-card { background: white; border: 1px solid #E5E7EB; border-radius: 20px; padding: 32px; position: relative; transition: all 0.3s; }
+    .plan-card.featured { border: 2px solid #4F46E5; background: #F9FAFF; }
+    .plan-card.current { border-color: #E5E7EB; opacity: 0.8; }
+    
+    .premium-badge { position: absolute; top: -12px; right: 24px; background: #4F46E5; color: white; padding: 4px 12px; border-radius: 100px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+    .plan-tier { font-size: 0.9rem; font-weight: 700; color: #6B7280; text-transform: uppercase; margin-bottom: 12px; }
+    .plan-price { font-size: 2.5rem; font-weight: 800; color: #111827; margin-bottom: 24px; }
+    .plan-price span { font-size: 1rem; color: #9CA3AF; font-weight: 500; }
+    
+    .plan-features { list-style: none; padding: 0; margin: 0 0 32px 0; }
+    .plan-features li { display: flex; align-items: center; gap: 12px; color: #4B5563; font-size: 0.95rem; margin-bottom: 12px; }
+    .plan-features li i { color: #10B981; font-size: 1.1rem; }
+    
+    .current-label { text-align: center; font-weight: 700; color: #9CA3AF; font-size: 0.85rem; padding: 12px; border: 1px dashed #D1D5DB; border-radius: 10px; }
+    .btn-upgrade-alt { width: 100%; background: #4F46E5; color: white; border: none; border-radius: 12px; padding: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+    .btn-upgrade-alt:hover { background: #4338CA; transform: translateY(-2px); }
+
+    @@media (max-width: 992px) { .billing-grid, .plans-row { grid-template-columns: 1fr; } }
+</style>
+
 @functions {
     private string GetPlanDescription(string plan) {
         return plan.ToLower() == "free" 
-            ? "Basic plan with 1 drawing slot and 3 team member limit"
-            : "Professional plan with 5 drawings and 15 team members";
+            ? "Ideal for individuals starting their visual collaboration journey."
+            : "High-performance plan for growing teams and advanced creative projects.";
     }
 }
 
-@section Scripts {
-    <script>
+<script>
+    (function() {
         const orgId = '@Model.Id';
         const apiBase = `/api/organization/${orgId}`;
 
         async function upgradeToProClick() {
-            if (confirm('Upgrade to Pro plan? This will unlock 5 drawings and 15 team member slots.')) {
+            if (confirm('Upgrade to Pro plan? This will unlock unlimited workspace potential.')) {
                 try {
                     const res = await fetch(`${apiBase}/billing/upgrade`, { method: 'POST' });
-                    const data = await res.json();
                     if (res.ok) {
-                        alert(data.message || 'Successfully upgraded to Pro!');
+                        alert('Welcome to Pro! Your limits have been expanded.');
                         location.reload();
-                    } else {
-                        alert('Error: ' + (data.error || 'Upgrade failed'));
                     }
-                } catch (err) {
-                    alert('Upgrade failed: ' + err.message);
-                }
+                } catch (err) { alert('Upgrade failed'); }
             }
         }
 
         const upgradeBtn = document.getElementById('upgradeBtn');
-        if (upgradeBtn) {
-            upgradeBtn.addEventListener('click', upgradeToProClick);
-        }
-
+        if (upgradeBtn) upgradeBtn.onclick = upgradeToProClick;
         const upgradeBtn2 = document.getElementById('upgradeBtn2');
-        if (upgradeBtn2) {
-            upgradeBtn2.addEventListener('click', upgradeToProClick);
-        }
+        if (upgradeBtn2) upgradeBtn2.onclick = upgradeToProClick;
 
         async function loadUsage() {
             try {
                 const res = await fetch(`${apiBase}/usage`);
                 const usage = await res.json();
-                document.getElementById('drawingsUsage').textContent = `${usage.drawingsCount}`;
-                document.getElementById('membersUsage').textContent = `${usage.collaborators}`;
-                const renewDate = new Date(usage.renewDate).toLocaleDateString();
-                document.getElementById('renewDate').textContent = renewDate;
-            } catch (err) {
-                console.error('Failed to load usage:', err);
-            }
+                document.getElementById('drawingsUsage').textContent = usage.drawingsCount;
+                document.getElementById('membersUsage').textContent = usage.collaborators;
+                document.getElementById('renewDate').textContent = new Date(usage.renewDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+            } catch (err) { console.error(err); }
         }
 
         loadUsage();
-    </script>
-}
+    })();
+</script>
