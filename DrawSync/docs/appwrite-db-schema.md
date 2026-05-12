@@ -1,58 +1,67 @@
 # Appwrite Database Documentation
 
-This document describes the schema and usage of Appwrite as the primary database for DrawSync. Based on the `appwrite-findings.md`, we use the `TablesDB` service.
+This document describes the Appwrite TablesDB schema used for DrawSync's cloud control plane and backup storage. The browser local database remains the primary store for live drawing rows; Appwrite is used for identity, team entitlements, and cloud backup snapshots.
 
 ## Database Structure
 
 The project uses a single database (ID: `drawsync`) containing the following tables.
 
 ### 1. Users (`users`)
-Stores basic user profile information.
+Stores the Appwrite-linked user profile.
 
 | Column | Type | Description |
 | :--- | :--- | :--- |
-| `name` | String | User's full name |
-| `email` | String | User's email address (used for lookup) |
+| `name` | String | User's display name |
+| `email` | String | User's email address |
+| `avatarUrl` | String | Optional profile image URL |
 
-*Notes:* 
+*Notes:*
 - The `$id` of the row should ideally match the Appwrite Account ID.
 - Use `Query.Equal("email", email)` for lookups if the ID isn't known.
 
-### 2. Drawings (`drawings`)
-Containers for different drawing projects.
+### 2. Teams (`teams`)
+Represents a shared drawing workspace and its subscription state.
 
 | Column | Type | Description |
 | :--- | :--- | :--- |
-| `name` | String | The display name of the drawing |
+| `name` | String | Team name |
+| `planTier` | Enum | `free` or `pro` |
+| `boardLimit` | Integer | Number of boards allowed for the team |
+| `seatLimit` | Integer | Number of teammates/viewers included in the plan |
+| `extraSeatPacks` | Integer | Number of purchased 5-seat add-ons |
+| `backupEnabled` | Boolean | Whether cloud backup is available for the team |
 
-### 3. Map (`map`)
-Stores geospatial data layers and polylines.
-
-| Column | Type | Description |
-| :--- | :--- | :--- |
-| `drawingID` | String | Pointer to the parent drawing ID |
-| `attributes` | String | Visual metadata (color, thickness, etc.).is saved as stringified json. |
-| `type` | Enum | `geometry` or `custom` (text/icon) |
-| `geometry` | line | Coordinate data in format `[[x1,y1],[x2,y2]]` |
-
-### 4. Whiteboard (`whiteboard`)
-Stores whiteboard elements. Matches the Map schema but used for free-form whiteboarding.
+### 3. Team Members (`team_members`)
+Maps users to teams and roles.
 
 | Column | Type | Description |
 | :--- | :--- | :--- |
-| `drawingID` | Relationship / String | Pointer to the parent drawing ID |
-| `attributes` | String | Visual metadata (color, thickness, etc.).is saved as stringified json. |
-| `type` | Enum | `geometry` or `custom` |
-| `geometry` | line | Element coordinates |
+| `teamID` | String | Parent team |
+| `userID` | String | Appwrite user ID |
+| `role` | Enum | `admin`, `member`, or `viewer` |
 
-### 5. Allowance (`allowence`)
-Tracks resource quotas for users.
+### 4. Boards (`boards`)
+Stores board-level metadata. The live canvas data itself stays in the browser local database.
 
 | Column | Type | Description |
 | :--- | :--- | :--- |
-| `userID` | String | Pointer to the User ID |
-| `drawings` | Integer | current drawing count |
-| `rows` | Integer | current rows count |
+| `teamID` | String | Parent team |
+| `name` | String | Board name |
+| `type` | Enum | `whiteboard` or `map` |
+| `archived` | Boolean | Read-only flag |
+| `createdBy` | String | User ID of the creator |
+
+### 5. Board Backups (`board_backups`)
+Stores cloud backup snapshots that can be restored by team members with permission.
+
+| Column | Type | Description |
+| :--- | :--- | :--- |
+| `boardID` | String | Parent board |
+| `version` | Integer | Snapshot version number |
+| `payload` | String | Stringified JSON snapshot of the board data |
+| `checksum` | String | Integrity hash for restore validation |
+| `createdBy` | String | User ID that created the backup |
+| `createdAt` | String | Timestamp of backup creation |
 
 ---
 
