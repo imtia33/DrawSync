@@ -91,18 +91,109 @@
             }
         }
 
+        // --- Futuristic Mouse Trail Logic ---
+        let trail = [];
+        let trailParticles = [];
+        const MAX_TRAIL_AGE = 120; // Slightly faster fade for "energy" look
+
+        window.addEventListener('mousemove', (e) => {
+            const now = Date.now();
+            trail.push({ x: e.clientX, y: e.clientY, age: 0, timestamp: now });
+            
+            // Add a few "energy dust" particles at the cursor
+            if (Math.random() > 0.5) {
+                trailParticles.push({
+                    x: e.clientX,
+                    y: e.clientY,
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: (Math.random() - 0.5) * 2,
+                    size: Math.random() * 3 + 1,
+                    life: 1.0
+                });
+            }
+        });
+
+        function drawNeonTrail() {
+            if (trail.length < 2) return;
+
+            const isDark = document.documentElement.classList.contains('dark');
+            
+            // Neon Palette (Using theme burgundy as base)
+            const neonColor = isDark ? '255, 45, 85' : '180, 20, 60';
+            const coreColor = '255, 255, 255';
+
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            for (let i = 1; i < trail.length; i++) {
+                const p1 = trail[i - 1];
+                const p2 = trail[i];
+                
+                const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+                if (dist > 150) continue; 
+
+                const ageRatio = p2.age / MAX_TRAIL_AGE;
+                const alpha = 1 - ageRatio;
+                if (alpha <= 0) continue;
+
+                // 1. Atmospheric Glow (Widest, very soft)
+                ctx.shadowBlur = 35 * alpha;
+                ctx.shadowColor = `rgba(${neonColor}, ${alpha * 0.5})`;
+                ctx.lineWidth = 15 * alpha;
+                ctx.strokeStyle = `rgba(${neonColor}, ${alpha * 0.1})`;
+                ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+
+                // 2. Neon Halo (Medium, intense)
+                ctx.shadowBlur = 10 * alpha;
+                ctx.lineWidth = 6 * alpha;
+                ctx.strokeStyle = `rgba(${neonColor}, ${alpha * 0.7})`;
+                ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+
+                // 3. Electric Core (Thin, White)
+                ctx.shadowBlur = 5 * alpha;
+                ctx.shadowColor = '#fff';
+                ctx.lineWidth = 2 * alpha;
+                ctx.strokeStyle = `rgba(${coreColor}, ${alpha * 0.9})`;
+                ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+            }
+
+            // Reset for performance
+            ctx.shadowBlur = 0;
+
+            // Neon Sparks
+            trailParticles.forEach((p, index) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.02;
+                if (p.life <= 0) { trailParticles.splice(index, 1); return; }
+
+                ctx.fillStyle = `rgba(${neonColor}, ${p.life * 0.6})`;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2); ctx.fill();
+            });
+
+            // --- CRITICAL: Update age and filter old points to ensure they disappear ---
+            trail.forEach(p => p.age++);
+            trail = trail.filter(p => p.age < MAX_TRAIL_AGE);
+        }
+
         function initParticles() {
             resize();
-            particles = Array.from({ length: 100 }, () => new Particle());
+            particles = Array.from({ length: 80 }, () => new Particle());
             animate();
         }
 
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw background particles (fewer and slower for focus on trail)
             particles.forEach(p => {
                 p.update();
                 p.draw();
             });
+
+            // Draw neon trail
+            drawNeonTrail();
+
             requestAnimationFrame(animate);
         }
 
