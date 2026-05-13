@@ -6,20 +6,20 @@
 
 <div class="d-flex align-items-center justify-content-center" style="min-height: 80vh;">
     <div class="text-center">
-        <h1 id="revealTitle" class="display-1 fw-bold mb-6" style="font-family: 'Syncopate', sans-serif; letter-spacing: -4px; line-height: 0.9; opacity: 0; color: #111827;">
+        <h1 id="revealTitle" class="display-1 fw-bold mb-6" style="font-family: 'Syncopate', sans-serif; letter-spacing: -4px; line-height: 0.9; opacity: 0; color: var(--foreground);">
             DRAW<br/><span style="color: var(--primary)">SYNC</span>
         </h1>
-        <p class="text-muted mb-8" style="max-width: 500px; margin: 0 auto; font-size: 1.1rem; line-height: 1.6; animation: fadeIn 1s ease 1s forwards; opacity: 0;">
+        <p class="mb-8" style="max-width: 500px; margin: 0 auto; font-size: 1.1rem; line-height: 1.6; animation: fadeIn 1s ease 1s forwards; opacity: 0; color: var(--muted-foreground);">
             The real-time collaborative canvas for modern teams. Simple. Fast. Powerful.
         </p>
         
         <div class="d-flex flex-column gap-3 align-items-center mt-5" style="animation: fadeInUp 1s ease 1.2s forwards; opacity: 0;">
             @if (User.Identity?.IsAuthenticated == true)
             {
-                <a href="#" class="btn-primary-custom px-5">Dashboard</a>
+                <a asp-controller="Organization" asp-action="Index" class="btn-primary-custom px-5">Dashboard</a>
                 
-                <div class="mt-4 p-3 border rounded text-start bg-dark text-success" style="max-width: 600px; width: 100%; font-family: 'Consolas', monospace; font-size: 0.75rem; overflow-x: auto;">
-                    <h6 class="mb-2 fw-bold text-uppercase text-white-50" style="font-size: 0.7rem;">Appwrite Response Log</h6>
+                <div class="mt-4 p-3 border rounded text-start" style="max-width: 600px; width: 100%; font-family: var(--font-mono); font-size: 0.75rem; overflow-x: auto; background: var(--card); color: var(--foreground); border-color: var(--border);">
+                    <h6 class="mb-2 fw-bold text-uppercase" style="font-size: 0.7rem; color: var(--muted-foreground);">Appwrite Response Log</h6>
                     <pre class="m-0" style="color: inherit; background: transparent; border: none;">@ViewBag.RawApiResponse</pre>
                 </div>
             }
@@ -34,7 +34,7 @@
 
 @section Scripts {
     <style>
-        body { background-color: white !important; }
+        body { background-color: var(--background) !important; }
         @@keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -63,6 +63,12 @@
             canvas.height = window.innerHeight;
         }
 
+        function getParticleColor() {
+            // Read the current --primary color from CSS and use it for particles
+            const isDark = document.documentElement.classList.contains('dark');
+            return isDark ? 'rgba(180, 60, 60, 0.6)' : 'rgba(100, 30, 30, 0.5)';
+        }
+
         class Particle {
             constructor() {
                 this.x = Math.random() * canvas.width;
@@ -78,7 +84,7 @@
                 if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
             }
             draw() {
-                ctx.fillStyle = 'rgba(79, 70, 229, 0.6)'; // More vibrant indigo
+                ctx.fillStyle = getParticleColor();
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
                 ctx.fill();
@@ -107,13 +113,17 @@
             title.innerHTML = '';
             title.style.opacity = '1';
 
+            const style = getComputedStyle(document.documentElement);
+            const primaryColor = style.getPropertyValue('--primary').trim();
+            const fgColor = style.getPropertyValue('--foreground').trim();
+
             [...text].forEach((char, i) => {
                 const span = document.createElement('span');
                 span.textContent = char;
                 span.className = 'reveal-char';
                 span.style.animationDelay = `${i * 0.1}s`;
                 if (i >= 4) span.style.color = 'var(--primary)';
-                else span.style.color = '#111827'; // Visible dark color
+                else span.style.color = 'var(--foreground)';
                 if (i === 4) title.appendChild(document.createElement('br'));
                 title.appendChild(span);
             });

@@ -1,26 +1,255 @@
 @model IEnumerable<DrawSync.Models.Organization>
 
 @{
-    ViewData["Title"] = "Organizations";
+    ViewData["Title"] = "Your Organizations";
 }
 
-<h2>Your Organizations</h2>
+<div class="org-selection-wrapper">
+    <div class="selection-container">
+        <!-- Hero Section -->
+        <header class="selection-hero">
+            <h1 class="display-4 fw-bold mb-3">Your <span class="text-primary-gradient">Workspaces</span></h1>
+            <p class="lead text-muted">Select an organization to access your collaborative whiteboards and team settings.</p>
+        </header>
 
-<div class="org-list">
-    @if (!Model?.Any() ?? true)
-    {
-        <p>You are not a member of any organizations yet.</p>
-        <a asp-controller="Organization" asp-action="Index" class="btn-primary-custom">Refresh</a>
-    }
-    else
-    {
-        <ul>
-            @foreach (var org in Model)
+        <!-- Organization Grid -->
+        <div class="org-grid mt-5">
+            @if (!Model?.Any() ?? true)
             {
-                <li>
-                    <a asp-action="Details" asp-route-id="@org.Id">@org.Name</a> — @org.Plan
-                </li>
+                <div class="empty-state-card card-surface">
+                    <div class="empty-icon">
+                        <i class="bi bi-building-dash"></i>
+                    </div>
+                    <h3>No Organizations Found</h3>
+                    <p>You haven't joined or created any organizations yet. Start your collaborative journey today.</p>
+                    <div class="d-flex gap-3 justify-content-center mt-4">
+                        <button class="btn-primary-custom px-4" onclick="location.reload()">
+                            <i class="bi bi-arrow-clockwise me-2"></i> Refresh
+                        </button>
+                    </div>
+                </div>
             }
-        </ul>
-    }
+            else
+            {
+                @foreach (var org in Model)
+                {
+                    <a asp-action="Details" asp-route-id="@org.Id" class="org-card-link">
+                        <div class="org-card card-surface">
+                            <div class="card-top">
+                                <div class="org-avatar">
+                                    @org.Name.Substring(0, 1).ToUpper()
+                                </div>
+                                <div class="org-badge @org.Plan.ToLower()">
+                                    @org.Plan
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <h3 class="org-name">@org.Name</h3>
+                                <div class="org-stats">
+                                    <span class="stat-item">
+                                        <i class="bi bi-grid-1x2"></i> Shared Workspace
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="card-arrow">
+                                <i class="bi bi-arrow-right"></i>
+                            </div>
+                        </div>
+                    </a>
+                }
+            }
+        </div>
+    </div>
 </div>
+
+<style>
+    .org-selection-wrapper {
+        padding: 80px 20px;
+        min-height: calc(100vh - 70px);
+        background: radial-gradient(circle at top right, oklch(from var(--primary) l c h / 0.05), transparent 400px),
+                    radial-gradient(circle at bottom left, oklch(from var(--primary) l c h / 0.03), transparent 300px);
+    }
+
+    .selection-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    .selection-hero {
+        text-align: center;
+        margin-bottom: 60px;
+        animation: fadeInDown 0.8s ease-out;
+    }
+
+    .text-primary-gradient {
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    /* Grid Layout */
+    .org-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 24px;
+        animation: fadeInUp 0.8s ease-out 0.2s both;
+    }
+
+    /* Org Card Styles */
+    .org-card-link {
+        text-decoration: none !important;
+        color: inherit !important;
+        display: block;
+    }
+
+    .org-card {
+        padding: 32px;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .org-card:hover {
+        transform: translateY(-8px);
+        border-color: var(--primary);
+        box-shadow: var(--shadow-xl);
+    }
+
+    .card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 24px;
+    }
+
+    .org-avatar {
+        width: 56px;
+        height: 56px;
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: 800;
+        box-shadow: var(--shadow-md);
+        transition: transform 0.3s ease;
+    }
+
+    .org-card:hover .org-avatar {
+        transform: scale(1.1) rotate(-5deg);
+    }
+
+    .org-badge {
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        padding: 6px 12px;
+        border-radius: 100px;
+        letter-spacing: 0.05em;
+    }
+
+    .org-badge.pro {
+        background: oklch(from var(--primary) l c h / 0.1);
+        color: var(--primary);
+        border: 1px solid oklch(from var(--primary) l c h / 0.2);
+    }
+
+    .org-badge.free {
+        background: var(--secondary);
+        color: var(--muted-foreground);
+    }
+
+    .org-name {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--foreground);
+        margin: 0 0 12px 0;
+        letter-spacing: -0.02em;
+    }
+
+    .org-stats {
+        color: var(--muted-foreground);
+        font-size: 0.9rem;
+    }
+
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .card-arrow {
+        position: absolute;
+        bottom: 32px;
+        right: 32px;
+        width: 40px;
+        height: 40px;
+        background: var(--secondary);
+        color: var(--primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transform: translateX(-20px);
+        transition: all 0.3s ease;
+    }
+
+    .org-card:hover .card-arrow {
+        opacity: 1;
+        transform: translateX(0);
+        background: var(--primary);
+        color: var(--primary-foreground);
+    }
+
+    /* Empty State */
+    .empty-state-card {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 80px 40px;
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        color: var(--muted-foreground);
+        opacity: 0.3;
+        margin-bottom: 24px;
+    }
+
+    .empty-state-card h3 {
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: var(--foreground);
+        margin-bottom: 12px;
+    }
+
+    .empty-state-card p {
+        color: var(--muted-foreground);
+        max-width: 400px;
+        margin: 0 auto;
+    }
+
+    /* Animations */
+    @@keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @@keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @@media (max-width: 768px) {
+        .org-selection-wrapper { padding: 40px 20px; }
+        .org-grid { grid-template-columns: 1fr; }
+        .selection-hero h1 { font-size: 2.5rem; }
+    }
+</style>

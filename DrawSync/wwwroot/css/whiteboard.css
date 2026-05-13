@@ -4,14 +4,14 @@
 :root {
     --header-height: 60px;
     --sidebar-width: 260px;
-    --bg-app: #f0f2f5;
-    --bg-sidebar: #ffffff;
-    --bg-header: #ffffff;
-    --border-color: #e5e7eb;
-    --accent-color: #4f46e5;
-    --accent-soft: rgba(79, 70, 229, 0.1);
-    --text-main: #111827;
-    --text-muted: #6b7280;
+    --bg-app: var(--background, #f0f2f5);
+    --bg-sidebar: var(--card, #ffffff);
+    --bg-header: var(--card, #ffffff);
+    --border-color: var(--border, #e5e7eb);
+    --accent-color: var(--primary, #4f46e5);
+    --accent-soft: oklch(from var(--primary, oklch(0.38 0.15 18.62)) l c h / 0.1);
+    --text-main: var(--foreground, #111827);
+    --text-muted: var(--muted-foreground, #6b7280);
     --radius-md: 8px;
     --radius-lg: 12px;
 }
@@ -27,6 +27,7 @@ body.whiteboard-page {
     height: 100vh;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     background-color: var(--bg-app);
+    color: var(--text-main);
 }
 
 body.whiteboard-page header:not(.app-header),
@@ -95,7 +96,7 @@ body.whiteboard-page footer {
 .toolbar-center {
     display: flex;
     align-items: center;
-    background: #f3f4f6;
+    background: var(--secondary, #f3f4f6);
     padding: 4px;
     border-radius: 10px;
     gap: 4px;
@@ -109,7 +110,7 @@ body.whiteboard-page footer {
 .tool-divider {
     width: 1px;
     height: 20px;
-    background: #d1d5db;
+    background: var(--border-color);
     margin: 0 4px;
 }
 
@@ -134,7 +135,7 @@ body.whiteboard-page footer {
 }
 
 .tool-btn.active {
-    background: white;
+    background: var(--card, white);
     color: var(--accent-color);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
@@ -251,7 +252,7 @@ body.whiteboard-page footer {
 
 .style-toggle-group {
     display: flex;
-    background: #f3f4f6;
+    background: var(--secondary, #f3f4f6);
     padding: 3px;
     border-radius: 8px;
 }
@@ -267,7 +268,7 @@ body.whiteboard-page footer {
 }
 
 .style-toggle.active {
-    background: white;
+    background: var(--card, white);
     color: var(--accent-color);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
@@ -344,7 +345,7 @@ body.whiteboard-page footer {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #f3f4f6;
+    background-color: var(--secondary, #f3f4f6);
 }
 
 #whiteboardCanvas {

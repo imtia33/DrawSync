@@ -9,7 +9,6 @@
     </div>
 
     <div class="settings-grid">
-        <!-- Main Settings -->
         <div class="card-surface settings-form-card">
             <form id="settingsForm">
                 <div class="form-input-group">
@@ -17,7 +16,6 @@
                     <input type="text" id="orgName" value="@Model.Name" placeholder="e.g. Acme Design Team" required>
                     <p class="input-hint">This name will be visible to all members and on exported drawings.</p>
                 </div>
-
                 <div class="form-input-group">
                     <label>Organization Unique ID</label>
                     <div class="id-wrapper">
@@ -26,26 +24,22 @@
                     </div>
                     <p class="input-hint">Immutable system identifier for your organization.</p>
                 </div>
-
                 <div class="form-input-group">
                     <label>Workspace Created</label>
                     <input type="text" value="@(DateTime.TryParse(Model.CreatedAt, out var dt) ? dt.ToString("MMMM dd, yyyy") : Model.CreatedAt)" disabled>
                 </div>
-
                 <div class="settings-actions">
                     <button type="submit" class="btn-save-settings">Save Workspace Changes</button>
                 </div>
             </form>
         </div>
 
-        <!-- Danger Zone -->
         <div class="card-surface danger-zone-card">
             <div class="danger-header">
                 <i class="bi bi-exclamation-octagon"></i>
                 <h3>Danger Zone</h3>
             </div>
             <p class="danger-desc">Deleting this organization will permanently remove all associated drawings, member permissions, and billing history. This action is irreversible.</p>
-            
             <div class="danger-footer">
                 <button type="button" id="deleteOrgBtn" class="btn-delete-org">
                     <i class="bi bi-trash"></i>
@@ -58,67 +52,43 @@
 
 <style>
     .settings-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; align-items: start; }
-    
     .settings-form-card { padding: 40px; }
     .settings-form-card form { max-width: 500px; }
-    
-    .input-hint { font-size: 0.75rem; color: #9CA3AF; margin-top: 6px; }
-    
+    .input-hint { font-size: 0.75rem; color: var(--muted-foreground); margin-top: 6px; }
     .id-wrapper { position: relative; }
-    .id-wrapper input { background: #F9FAFB !important; color: #9CA3AF !important; border-style: dashed !important; cursor: not-allowed; }
-    .lock-icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: #D1D5DB; }
-
-    .btn-save-settings { background: #4F46E5; color: white; border: none; border-radius: 12px; padding: 14px 28px; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2); }
-    .btn-save-settings:hover { background: #4338CA; transform: translateY(-2px); box-shadow: 0 8px 16px rgba(79, 70, 229, 0.3); }
-
-    .danger-zone-card { padding: 32px; border: 1px solid #FEE2E2; background: #FFF5F5; }
-    .danger-header { display: flex; align-items: center; gap: 10px; color: #DC2626; margin-bottom: 12px; }
-    .danger-header h3 { font-size: 1.1rem; font-weight: 800; color: #991B1B; margin: 0; }
-    .danger-desc { font-size: 0.9rem; color: #B91C1C; opacity: 0.8; margin-bottom: 24px; line-height: 1.5; }
-    
-    .btn-delete-org { width: 100%; background: white; color: #DC2626; border: 1px solid #FECACA; border-radius: 12px; padding: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .btn-delete-org:hover { background: #DC2626; color: white; border-color: #DC2626; box-shadow: 0 10px 20px -5px rgba(220, 38, 38, 0.2); }
-
+    .id-wrapper input { background: var(--secondary) !important; color: var(--muted-foreground) !important; border-style: dashed !important; cursor: not-allowed; }
+    .lock-icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: var(--muted-foreground); opacity: 0.5; }
+    .btn-save-settings { background: var(--primary); color: var(--primary-foreground); border: none; border-radius: var(--radius); padding: 14px 28px; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: var(--shadow-md); }
+    .btn-save-settings:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    .danger-zone-card { padding: 32px; border: 1px solid oklch(from var(--destructive) l c h / 0.2); background: oklch(from var(--destructive) l c h / 0.05); }
+    .danger-header { display: flex; align-items: center; gap: 10px; color: var(--destructive); margin-bottom: 12px; }
+    .danger-header h3 { font-size: 1.1rem; font-weight: 800; color: var(--destructive); margin: 0; }
+    .danger-desc { font-size: 0.9rem; color: var(--destructive); opacity: 0.8; margin-bottom: 24px; line-height: 1.5; }
+    .btn-delete-org { width: 100%; background: var(--card); color: var(--destructive); border: 1px solid oklch(from var(--destructive) l c h / 0.3); border-radius: var(--radius); padding: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-delete-org:hover { background: var(--destructive); color: var(--destructive-foreground); border-color: var(--destructive); box-shadow: var(--shadow-lg); }
     @@media (max-width: 992px) { .settings-grid { grid-template-columns: 1fr; } }
 </style>
 
 <script>
-    (function() {
-        const orgId = '@Model.Id';
-        const apiBase = `/api/organization/${orgId}`;
-
-        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const name = document.getElementById('orgName').value;
-
-            try {
-                const res = await fetch(`${apiBase}/settings`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name })
-                });
-
-                if (res.ok) {
-                    alert('Organization preferences updated.');
-                    location.reload();
-                }
-            } catch (err) { alert('Failed to update settings'); }
-        });
-
-        document.getElementById('deleteOrgBtn').addEventListener('click', () => {
-            if (confirm('CRITICAL ACTION: This will permanently purge your entire organization. Are you absolutely certain?')) {
-                deleteOrganization();
-            }
-        });
-
-        async function deleteOrganization() {
-            try {
-                const res = await fetch(`${apiBase}`, { method: 'DELETE' });
-                if (res.ok) {
-                    alert('Workspace deleted. Redirecting...');
-                    window.location.href = '/Organization';
-                }
-            } catch (err) { alert('Deletion failed'); }
-        }
-    })();
+(function() {
+    const orgId = '@Model.Id';
+    const apiBase = `/api/organization/${orgId}`;
+    document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('orgName').value;
+        try {
+            const res = await fetch(`${apiBase}/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+            if (res.ok) { alert('Organization preferences updated.'); location.reload(); }
+        } catch (err) { alert('Failed to update settings'); }
+    });
+    document.getElementById('deleteOrgBtn').addEventListener('click', () => {
+        if (confirm('CRITICAL ACTION: This will permanently purge your entire organization. Are you absolutely certain?')) { deleteOrganization(); }
+    });
+    async function deleteOrganization() {
+        try {
+            const res = await fetch(`${apiBase}`, { method: 'DELETE' });
+            if (res.ok) { alert('Workspace deleted. Redirecting...'); window.location.href = '/Organization'; }
+        } catch (err) { alert('Deletion failed'); }
+    }
+})();
 </script>

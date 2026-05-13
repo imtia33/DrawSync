@@ -9,7 +9,6 @@
     </div>
 
     <div class="usage-grid">
-        <!-- Resource Meters -->
         <div class="card-surface usage-meters-card">
             <h3>Live Workspace Consumption</h3>
             <div id="metersContainer" class="meters-list">
@@ -20,14 +19,12 @@
             </div>
         </div>
 
-        <!-- Plan Summary -->
         <div class="card-surface plan-constraints-card">
             <div class="header-with-icon">
                 <i class="bi bi-info-circle"></i>
                 <h3>@Model.Plan.ToUpper() Limits</h3>
             </div>
             <p class="constraints-sub">Your current subscription provides the following maximum capacities:</p>
-            
             <div class="constraints-grid">
                 <div class="constraint-item">
                     <span class="label">Drawing Slots</span>
@@ -46,7 +43,6 @@
                     <span class="value" id="renewsOn">--</span>
                 </div>
             </div>
-
             <div class="upgrade-prompt">
                 <p>Need more resources for your growing team?</p>
                 <button onclick="document.querySelector('[data-tab=billing]').click()" class="btn-text-link">
@@ -59,88 +55,55 @@
 
 <style>
     .usage-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; }
-    
     .usage-meters-card { padding: 32px; }
-    .usage-meters-card h3 { font-size: 1.1rem; font-weight: 700; color: #111827; margin-bottom: 32px; }
-    
+    .usage-meters-card h3 { font-size: 1.1rem; font-weight: 700; color: var(--foreground); margin-bottom: 32px; }
     .meters-list { display: flex; flex-direction: column; gap: 32px; }
-    
-    .meter-item { }
     .meter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    .meter-label { font-size: 0.85rem; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: 0.05em; }
-    .meter-percentage { font-size: 0.9rem; font-weight: 700; color: #111827; }
-    
-    .progress-track { height: 10px; background: #F3F4F6; border-radius: 100px; overflow: hidden; position: relative; }
+    .meter-label { font-size: 0.85rem; font-weight: 700; color: var(--foreground); text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.8; }
+    .meter-percentage { font-size: 0.9rem; font-weight: 700; color: var(--foreground); }
+    .progress-track { height: 10px; background: var(--secondary); border-radius: 100px; overflow: hidden; position: relative; }
     .progress-bar { height: 100%; border-radius: 100px; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
-    
-    .bar-drawings { background: linear-gradient(to right, #6366f1, #4f46e5); }
+    .bar-drawings { background: linear-gradient(to right, var(--primary), var(--accent, var(--primary))); }
     .bar-members { background: linear-gradient(to right, #ec4899, #db2777); }
     .bar-storage { background: linear-gradient(to right, #10b981, #059669); }
-
-    .plan-constraints-card { padding: 32px; background: #F9FAFF; border-color: #E0E7FF; }
-    .header-with-icon { display: flex; align-items: center; gap: 10px; color: #4F46E5; margin-bottom: 12px; }
-    .header-with-icon h3 { font-size: 1.1rem; font-weight: 800; color: #1E1B4B; margin: 0; }
-    .constraints-sub { font-size: 0.9rem; color: #4338CA; opacity: 0.8; margin-bottom: 24px; line-height: 1.5; }
-    
+    .plan-constraints-card { padding: 32px; background: oklch(from var(--primary) l c h / 0.05); border-color: oklch(from var(--primary) l c h / 0.15); }
+    .header-with-icon { display: flex; align-items: center; gap: 10px; color: var(--primary); margin-bottom: 12px; }
+    .header-with-icon h3 { font-size: 1.1rem; font-weight: 800; color: var(--foreground); margin: 0; }
+    .constraints-sub { font-size: 0.9rem; color: var(--muted-foreground); margin-bottom: 24px; line-height: 1.5; }
     .constraints-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
-    .constraint-item { background: white; padding: 16px; border-radius: 12px; border: 1px solid #E0E7FF; }
-    .constraint-item .label { display: block; font-size: 0.7rem; font-weight: 700; color: #94A3B8; text-transform: uppercase; margin-bottom: 4px; }
-    .constraint-item .value { font-size: 1.1rem; font-weight: 800; color: #1E1B4B; }
-    
-    .upgrade-prompt { padding-top: 24px; border-top: 1px solid #E0E7FF; }
-    .upgrade-prompt p { font-size: 0.85rem; color: #4338CA; margin-bottom: 8px; }
-    .btn-text-link { background: transparent; border: none; color: #4F46E5; font-weight: 700; font-size: 0.9rem; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 6px; }
+    .constraint-item { background: var(--card); padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); }
+    .constraint-item .label { display: block; font-size: 0.7rem; font-weight: 700; color: var(--muted-foreground); text-transform: uppercase; margin-bottom: 4px; }
+    .constraint-item .value { font-size: 1.1rem; font-weight: 800; color: var(--foreground); }
+    .upgrade-prompt { padding-top: 24px; border-top: 1px solid var(--border); }
+    .upgrade-prompt p { font-size: 0.85rem; color: var(--muted-foreground); margin-bottom: 8px; }
+    .btn-text-link { background: transparent; border: none; color: var(--primary); font-weight: 700; font-size: 0.9rem; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 6px; }
     .btn-text-link:hover { text-decoration: underline; }
-
     @@media (max-width: 992px) { .usage-grid { grid-template-columns: 1fr; } }
 </style>
 
 <script>
-    (function() {
-        const orgId = '@Model.Id';
-        const apiBase = `/api/organization/${orgId}`;
-
-        async function loadUsageAndLimits() {
-            try {
-                const usageRes = await fetch(`${apiBase}/usage`);
-                const usage = await usageRes.json();
-                const billingRes = await fetch(`${apiBase}/billing`);
-                const billing = await billingRes.json();
-
-                const dPerc = Math.min(100, (usage.drawingsCount / billing.limits.drawings) * 100);
-                const mPerc = Math.min(100, (usage.collaborators / billing.limits.members) * 100);
-
-                const container = document.getElementById('metersContainer');
-                container.innerHTML = `
-                    <div class="meter-item">
-                        <div class="meter-header">
-                            <span class="meter-label">Drawing Slots Used</span>
-                            <span class="meter-percentage">${usage.drawingsCount} / ${billing.limits.drawings}</span>
-                        </div>
-                        <div class="progress-track"><div class="progress-bar bar-drawings" style="width: ${dPerc}%"></div></div>
-                    </div>
-                    <div class="meter-item">
-                        <div class="meter-header">
-                            <span class="meter-label">Team Collaboration Capacity</span>
-                            <span class="meter-percentage">${usage.collaborators} / ${billing.limits.members}</span>
-                        </div>
-                        <div class="progress-track"><div class="progress-bar bar-members" style="width: ${mPerc}%"></div></div>
-                    </div>
-                    <div class="meter-item">
-                        <div class="meter-header">
-                            <span class="meter-label">Cloud Asset Storage</span>
-                            <span class="meter-percentage">Standard (Unlimited)</span>
-                        </div>
-                        <div class="progress-track"><div class="progress-bar bar-storage" style="width: 15%"></div></div>
-                    </div>
-                `;
-
-                document.getElementById('drawingLimit').textContent = billing.limits.drawings;
-                document.getElementById('memberLimit').textContent = billing.limits.members;
-                document.getElementById('renewsOn').textContent = new Date(usage.renewDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-            } catch (err) { console.error(err); }
-        }
-
-        loadUsageAndLimits();
-    })();
+(function() {
+    const orgId = '@Model.Id';
+    const apiBase = `/api/organization/${orgId}`;
+    async function loadUsageAndLimits() {
+        try {
+            const usageRes = await fetch(`${apiBase}/usage`);
+            const usage = await usageRes.json();
+            const billingRes = await fetch(`${apiBase}/billing`);
+            const billing = await billingRes.json();
+            const dPerc = Math.min(100, (usage.drawingsCount / billing.limits.drawings) * 100);
+            const mPerc = Math.min(100, (usage.collaborators / billing.limits.members) * 100);
+            const container = document.getElementById('metersContainer');
+            container.innerHTML = `
+                <div class="meter-item"><div class="meter-header"><span class="meter-label">Drawing Slots Used</span><span class="meter-percentage">${usage.drawingsCount} / ${billing.limits.drawings}</span></div><div class="progress-track"><div class="progress-bar bar-drawings" style="width: ${dPerc}%"></div></div></div>
+                <div class="meter-item"><div class="meter-header"><span class="meter-label">Team Collaboration Capacity</span><span class="meter-percentage">${usage.collaborators} / ${billing.limits.members}</span></div><div class="progress-track"><div class="progress-bar bar-members" style="width: ${mPerc}%"></div></div></div>
+                <div class="meter-item"><div class="meter-header"><span class="meter-label">Cloud Asset Storage</span><span class="meter-percentage">Standard (Unlimited)</span></div><div class="progress-track"><div class="progress-bar bar-storage" style="width: 15%"></div></div></div>
+            `;
+            document.getElementById('drawingLimit').textContent = billing.limits.drawings;
+            document.getElementById('memberLimit').textContent = billing.limits.members;
+            document.getElementById('renewsOn').textContent = new Date(usage.renewDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        } catch (err) { console.error(err); }
+    }
+    loadUsageAndLimits();
+})();
 </script>

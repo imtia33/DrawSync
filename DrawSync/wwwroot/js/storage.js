@@ -15,7 +15,7 @@ const Storage = {
         if (this.db) return this.db;
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(DB_NAME, DB_VERSION);
-            
+
             request.onupgradeneeded = (e) => {
                 const db = e.target.result;
                 if (!db.objectStoreNames.contains(STORES.BOARDS)) {
@@ -68,7 +68,7 @@ const Storage = {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
-        
+
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction(STORES.BOARDS, 'readwrite');
             const store = transaction.objectStore(STORES.BOARDS);
@@ -125,10 +125,10 @@ const Storage = {
         await this.init();
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction([STORES.ELEMENTS, STORES.BOARDS], 'readwrite');
-            
+
             // Save elements
             transaction.objectStore(STORES.ELEMENTS).put({ id: boardId, strokes: elements });
-            
+
             // Update board updatedAt timestamp
             const boardStore = transaction.objectStore(STORES.BOARDS);
             const boardReq = boardStore.get(boardId);

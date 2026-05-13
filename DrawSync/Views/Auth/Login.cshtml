@@ -39,7 +39,7 @@
             </div>
 
             <div class="form-group d-flex align-items-center mb-4">
-                <input asp-for="RememberMe" class="form-check-input me-2" style="background-color: var(--input-bg); border-color: var(--card-border);" />
+                <input asp-for="RememberMe" class="form-check-input me-2" />
                 <label asp-for="RememberMe" class="form-label mb-0" style="cursor: pointer;">Remember me</label>
             </div>
 
@@ -86,7 +86,7 @@
                     input.parentElement.querySelector('.form-label').style.color = 'var(--primary)';
                 });
                 input.addEventListener('blur', () => {
-                    input.parentElement.querySelector('.form-label').style.color = 'var(--text-muted)';
+                    input.parentElement.querySelector('.form-label').style.color = 'var(--muted-foreground)';
                 });
             });
         });

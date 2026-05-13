@@ -85,23 +85,12 @@
 </div>
 
 <style>
-    /* Dashboard Theme */
-    :root {
-        --org-bg: #F9FAFB;
-        --org-card: #FFFFFF;
-        --org-text: #111827;
-        --org-text-muted: #6B7280;
-        --org-primary: #4F46E5;
-        --org-border: #E5E7EB;
-        --radius-lg: 16px;
-        --radius-md: 12px;
-    }
-
-    body { background-color: var(--org-bg) !important; }
+    /* Dashboard Theme — uses global CSS variables */
+    body { background-color: var(--background) !important; }
 
     .org-dashboard-wrapper {
         padding: 40px 20px;
-        font-family: 'Inter', system-ui, sans-serif;
+        font-family: var(--font-sans);
     }
 
     .dashboard-container {
@@ -118,11 +107,11 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        background: var(--org-card);
+        background: var(--card);
         padding: 32px;
         border-radius: var(--radius-lg);
-        border: 1px solid var(--org-border);
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-sm);
     }
 
     .hero-left { display: flex; align-items: center; gap: 24px; }
@@ -130,27 +119,27 @@
     .org-icon {
         width: 64px;
         height: 64px;
-        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-        color: white;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--accent, var(--primary)) 100%);
+        color: var(--primary-foreground);
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 1.75rem;
         font-weight: 800;
         border-radius: 16px;
-        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+        box-shadow: var(--shadow-md);
     }
 
     .org-info h1 {
         font-size: 1.75rem;
         font-weight: 800;
-        color: var(--org-text);
+        color: var(--foreground);
         margin: 0 0 4px 0;
         letter-spacing: -0.5px;
     }
 
     .org-meta {
-        color: var(--org-text-muted);
+        color: var(--muted-foreground);
         font-size: 0.95rem;
         margin: 0;
     }
@@ -167,13 +156,13 @@
         letter-spacing: 0.5px;
     }
 
-    .plan-badge.free { background: #F3F4F6; color: #374151; border: 1px solid #E5E7EB; }
-    .plan-badge.pro { background: #EEF2FF; color: #4338CA; border: 1px solid #C7D2FE; }
+    .plan-badge.free { background: var(--secondary); color: var(--foreground); border: 1px solid var(--border); }
+    .plan-badge.pro { background: oklch(from var(--primary) l c h / 0.12); color: var(--primary); border: 1px solid oklch(from var(--primary) l c h / 0.3); }
 
     /* Navigation */
     .org-nav {
         margin-bottom: 32px;
-        border-bottom: 1px solid var(--org-border);
+        border-bottom: 1px solid var(--border);
         padding-bottom: 2px;
     }
 
@@ -187,7 +176,7 @@
         background: transparent;
         border: none;
         padding: 12px 4px;
-        color: var(--org-text-muted);
+        color: var(--muted-foreground);
         font-weight: 600;
         font-size: 0.95rem;
         cursor: pointer;
@@ -200,10 +189,10 @@
     }
 
     .tab-btn i { font-size: 1.1rem; }
-    .tab-btn:hover { color: var(--org-text); }
+    .tab-btn:hover { color: var(--foreground); }
     
     .tab-btn.active {
-        color: var(--org-primary);
+        color: var(--primary);
     }
 
     .tab-btn.active::after {
@@ -213,7 +202,7 @@
         left: 0;
         width: 100%;
         height: 2px;
-        background: var(--org-primary);
+        background: var(--primary);
     }
 
     /* Tab Content */

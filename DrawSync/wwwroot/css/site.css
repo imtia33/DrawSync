@@ -1,24 +1,122 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Syncopate:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lora:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&family=Syncopate:wght@400;700&display=swap');
+
 
 :root {
-    --primary: #6366f1;
-    --primary-hover: #4f46e5;
-    --bg-black: #000000;
-    --card-bg: rgba(255, 255, 255, 0.03);
-    --card-border: rgba(255, 255, 255, 0.08);
-    --text-main: #ffffff;
-    --text-muted: #a1a1aa;
-    --input-bg: rgba(255, 255, 255, 0.05);
+    --background: oklch(0.9832 0.0055 3.3355);
+    --foreground: oklch(0.2410 0.0786 22.3674);
+    --card: oklch(1.0000 0 0);
+    --card-foreground: oklch(0.2410 0.0786 22.3674);
+    --popover: oklch(1.0000 0 0);
+    --popover-foreground: oklch(0.2410 0.0786 22.3674);
+    --primary: oklch(0.3800 0.1523 18.6219);
+    --primary-foreground: oklch(1.0000 0 0);
+    --secondary: oklch(0.9391 0.0146 1.5616);
+    --secondary-foreground: oklch(0.3800 0.1523 18.6219);
+    --muted: oklch(0.9391 0.0146 1.5616);
+    --muted-foreground: oklch(0.5087 0.0422 12.4061);
+    --accent: oklch(0.4490 0.1606 17.6053);
+    --accent-foreground: oklch(1.0000 0 0);
+    --destructive: oklch(0.5143 0.1978 16.9350);
+    --destructive-foreground: oklch(1.0000 0 0);
+    --border: oklch(0.8779 0.0226 7.2393);
+    --input: oklch(0.8779 0.0226 7.2393);
+    --ring: oklch(0.3800 0.1523 18.6219);
+    --sidebar: oklch(0.2410 0.0786 22.3674);
+    --sidebar-foreground: oklch(0.9832 0.0055 3.3355);
+    --sidebar-primary: oklch(0.3800 0.1523 18.6219);
+    --sidebar-accent: oklch(0.3083 0.1034 22.2807);
+    --sidebar-border: oklch(0.3083 0.1034 22.2807);
+
+    /* Shadow system */
+    --shadow-color: hsl(356.4706 71.8310% 13.9216%);
+    --shadow-sm: 0px 3px 4px 0.5px hsl(356.4706 71.8310% 13.9216% / 0.20), 0px 1px 2px -0.5px hsl(356.4706 71.8310% 13.9216% / 0.20);
+    --shadow-md: 0px 3px 4px 0.5px hsl(356.4706 71.8310% 13.9216% / 0.20), 0px 2px 4px -0.5px hsl(356.4706 71.8310% 13.9216% / 0.20);
+    --shadow-lg: 0px 3px 4px 0.5px hsl(356.4706 71.8310% 13.9216% / 0.20), 0px 4px 6px -0.5px hsl(356.4706 71.8310% 13.9216% / 0.20);
+    --shadow-xl: 0px 3px 4px 0.5px hsl(356.4706 71.8310% 13.9216% / 0.20), 0px 8px 10px -0.5px hsl(356.4706 71.8310% 13.9216% / 0.20);
+
+    /* Functional aliases */
+    --primary-hover: oklch(0.4490 0.1606 17.6053);
+    --text-main: var(--foreground);
+    --text-muted: var(--muted-foreground);
+    --card-bg: var(--card);
+    --card-border: var(--border);
+    --input-bg: var(--secondary);
+    --bg-body: var(--background);
+
+    /* Radius */
+    --radius: 0.75rem;
+    --radius-sm: calc(var(--radius) - 4px);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 4px);
+
     --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    --font-sans: 'Inter', 'Lora', sans-serif;
+    --font-serif: 'Lora', serif;
+    --font-mono: 'Fira Code', monospace;
+    --tracking-normal: -0.015em;
+}
+
+/* ============================================
+   Dark Mode Variables
+   ============================================ */
+html.dark {
+    --background: oklch(0.1188 0.0318 15.2849);
+    --foreground: oklch(0.9607 0.0154 7.4853);
+    --card: oklch(0.1558 0.0393 15.4394);
+    --card-foreground: oklch(0.9607 0.0154 7.4853);
+    --popover: oklch(0.1558 0.0393 15.4394);
+    --popover-foreground: oklch(0.9607 0.0154 7.4853);
+    --primary: oklch(0.6122 0.2082 22.2410);
+    --primary-foreground: oklch(1.0000 0 0);
+    --secondary: oklch(0.2410 0.0786 22.3674);
+    --secondary-foreground: oklch(0.9247 0.0392 10.0700);
+    --muted: oklch(0.2013 0.0533 17.7133);
+    --muted-foreground: oklch(0.7578 0.0609 12.0570);
+    --accent: oklch(0.5424 0.2088 24.3525);
+    --accent-foreground: oklch(1.0000 0 0);
+    --destructive: oklch(0.6785 0.2131 14.7192);
+    --destructive-foreground: oklch(1.0000 0 0);
+    --border: oklch(0.2094 0.0499 16.3565);
+    --input: oklch(0.2846 0.0803 17.2477);
+    --ring: oklch(0.6477 0.2384 22.5888);
+    --sidebar: oklch(0.1005 0.0291 11.6980);
+    --sidebar-foreground: oklch(0.9607 0.0154 7.4853);
+    --sidebar-primary: oklch(0.6122 0.2082 22.2410);
+    --sidebar-accent: oklch(0.1558 0.0393 15.4394);
+    --sidebar-border: oklch(0.1558 0.0393 15.4394);
+
+    --shadow-color: hsl(0 0% 0%);
+    --shadow-sm: 0px 3px 4px 0.5px hsl(0 0% 0% / 0.20), 0px 1px 2px -0.5px hsl(0 0% 0% / 0.20);
+    --shadow-md: 0px 3px 4px 0.5px hsl(0 0% 0% / 0.20), 0px 2px 4px -0.5px hsl(0 0% 0% / 0.20);
+    --shadow-lg: 0px 3px 4px 0.5px hsl(0 0% 0% / 0.20), 0px 4px 6px -0.5px hsl(0 0% 0% / 0.20);
+    --shadow-xl: 0px 3px 4px 0.5px hsl(0 0% 0% / 0.20), 0px 8px 10px -0.5px hsl(0 0% 0% / 0.20);
+
+    --primary-hover: oklch(0.5424 0.2088 24.3525);
+    --text-main: var(--foreground);
+    --text-muted: var(--muted-foreground);
+    --card-bg: var(--card);
+    --card-border: var(--border);
+    --input-bg: var(--input);
+    --bg-body: var(--background);
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+* {
+    border-color: var(--border);
 }
 
 body {
-    font-family: 'Inter', sans-serif;
-    background-color: var(--bg-black);
+    font-family: var(--font-sans);
+    background-color: var(--bg-body);
     color: var(--text-main);
     margin: 0;
     padding: 0;
     overflow-x: hidden;
+    letter-spacing: var(--tracking-normal);
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 header {
@@ -27,10 +125,13 @@ header {
     width: 100%;
 }
 
+/* ============================================
+   Navbar
+   ============================================ */
 .navbar {
-    background: #ffffff !important;
+    background: var(--card) !important;
     backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    border-bottom: 1px solid var(--border);
     padding: 0.75rem 0;
     height: 70px;
     display: flex;
@@ -40,6 +141,7 @@ header {
     left: 0;
     right: 0;
     z-index: 1000;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .navbar-brand {
@@ -48,16 +150,16 @@ header {
     text-transform: uppercase;
     letter-spacing: 2px;
     font-size: 1.3rem;
-    color: #111827 !important;
+    color: var(--foreground) !important;
     transition: var(--transition);
 }
 
 .navbar-brand span {
-    color: #4f46e5;
+    color: var(--primary);
 }
 
 .nav-link {
-    color: #111827 !important;
+    color: var(--foreground) !important;
     font-weight: 500;
     font-size: 0.95rem;
     transition: var(--transition);
@@ -65,15 +167,42 @@ header {
 }
 
 .nav-link:hover {
-    color: #111827 !important;
+    color: var(--primary) !important;
 }
 
 .nav-link.active {
-    color: #4f46e5 !important;
+    color: var(--primary) !important;
     font-weight: 600;
 }
 
-/* Auth Card Styles */
+/* ============================================
+   Dark Mode Toggle
+   ============================================ */
+.theme-toggle-btn {
+    background: var(--secondary);
+    border: 1px solid var(--border);
+    color: var(--muted-foreground);
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1.1rem;
+}
+
+.theme-toggle-btn:hover {
+    background: var(--primary);
+    color: var(--primary-foreground);
+    border-color: var(--primary);
+    transform: rotate(15deg);
+}
+
+/* ============================================
+   Auth Card Styles
+   ============================================ */
 .auth-container {
     padding: 8rem 2rem;
     display: flex;
@@ -82,20 +211,28 @@ header {
 }
 
 .auth-card {
-    background: var(--card-bg);
+    background: var(--card);
     backdrop-filter: blur(16px);
-    border: 1px solid var(--card-border);
+    border: 1px solid var(--border);
     border-radius: 24px;
     padding: 3rem;
     width: 100%;
     max-width: 450px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--shadow-xl);
     animation: slideUp 0.6s ease-out;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 @keyframes slideUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .auth-title {
@@ -103,13 +240,13 @@ header {
     font-weight: 700;
     margin-bottom: 0.5rem;
     text-align: center;
-    background: linear-gradient(to right, #818cf8, #c084fc);
+    background: linear-gradient(to right, var(--primary), var(--accent));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
 .auth-subtitle {
-    color: var(--text-muted);
+    color: var(--muted-foreground);
     text-align: center;
     margin-bottom: 2.5rem;
 }
@@ -123,7 +260,7 @@ header {
     display: block;
     font-size: 0.875rem;
     font-weight: 500;
-    color: var(--text-muted);
+    color: var(--muted-foreground);
     margin-bottom: 0.5rem;
     transition: var(--transition);
 }
@@ -131,10 +268,10 @@ header {
 .form-control-custom {
     width: 100%;
     background: var(--input-bg);
-    border: 1px solid var(--card-border);
-    border-radius: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
     padding: 0.75rem 1rem;
-    color: var(--text-main);
+    color: var(--foreground);
     font-size: 1rem;
     transition: var(--transition);
     outline: none;
@@ -142,16 +279,24 @@ header {
 
 .form-control-custom:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
-    background: rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 0 4px oklch(from var(--ring) l c h / 0.15);
+    background: var(--card);
 }
 
+.form-control-custom::placeholder {
+    color: var(--muted-foreground);
+    opacity: 0.6;
+}
+
+/* ============================================
+   Buttons
+   ============================================ */
 .btn-primary-custom {
     display: inline-block;
-    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-    color: white;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+    color: var(--primary-foreground);
     border: none;
-    border-radius: 12px;
+    border-radius: var(--radius);
     padding: 0.85rem 2.5rem;
     font-weight: 700;
     font-size: 0.95rem;
@@ -159,14 +304,14 @@ header {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     text-align: center;
     text-decoration: none;
-    box-shadow: 0 4px 15px -3px rgba(79, 70, 229, 0.4);
+    box-shadow: var(--shadow-md);
 }
 
 .btn-primary-custom:hover {
     transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 12px 20px -5px rgba(79, 70, 229, 0.5);
-    background: linear-gradient(135deg, #818cf8 0%, #4f46e5 100%);
-    color: #ffffff !important; /* Force light text */
+    box-shadow: var(--shadow-xl);
+    background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
+    color: var(--primary-foreground) !important;
 }
 
 .btn-primary-custom:active {
@@ -175,10 +320,10 @@ header {
 
 .btn-outline-custom {
     display: inline-block;
-    background: rgba(255, 255, 255, 0.03);
-    color: #111827; /* Dark text for light background */
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
+    background: transparent;
+    color: var(--foreground);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
     padding: 0.85rem 2.5rem;
     font-weight: 700;
     font-size: 0.95rem;
@@ -189,23 +334,29 @@ header {
 }
 
 .btn-outline-custom:hover {
-    background: #ffffff;
-    color: #4f46e5 !important; /* Turn text indigo on hover */
-    border-color: #4f46e5;
+    background: var(--card);
+    color: var(--primary) !important;
+    border-color: var(--primary);
     transform: translateY(-3px);
-    box-shadow: 0 10px 20px -5px rgba(79, 70, 229, 0.15);
+    box-shadow: var(--shadow-lg);
 }
 
-/* Layout spacing */
+/* ============================================
+   Layout Spacing
+   ============================================ */
 .main-content-container {
-    padding-top: 70px; /* Space for fixed navbar */
+    padding-top: 70px;
+    /* Space for fixed navbar */
     min-height: calc(100vh - 70px);
 }
 
+/* ============================================
+   Logout Button
+   ============================================ */
 .btn-logout-small {
     background: transparent;
-    border: 1px solid #e5e7eb;
-    color: #6b7280;
+    border: 1px solid var(--border);
+    color: var(--muted-foreground);
     padding: 4px 12px;
     border-radius: 8px;
     font-size: 0.8rem;
@@ -215,57 +366,82 @@ header {
 }
 
 .btn-logout-small:hover {
-    background: #f9fafb;
-    color: #111827;
-    border-color: #d1d5db;
+    background: var(--secondary);
+    color: var(--foreground);
+    border-color: var(--primary);
 }
 
-/* Footer spacing */
+/* ============================================
+   Footer
+   ============================================ */
 footer {
     padding: 2rem 0;
-    background: rgba(0, 0, 0, 0.2);
-    border-top: 1px solid var(--card-border);
+    background: var(--secondary);
+    border-top: 1px solid var(--border);
     font-size: 0.875rem;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-/* Floating Animation */
+footer .text-muted {
+    color: var(--muted-foreground) !important;
+}
+
+/* ============================================
+   Floating Blobs
+   ============================================ */
 .floating-blob {
     position: fixed;
     width: 400px;
     height: 400px;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+    background: radial-gradient(circle, oklch(from var(--primary) l c h / 0.15) 0%, transparent 70%);
     filter: blur(40px);
     z-index: -1;
     border-radius: 50%;
 }
 
-.blob-1 { top: -100px; right: -100px; animation: float 15s infinite alternate; }
-.blob-2 { bottom: -100px; left: -100px; animation: float 18s infinite alternate-reverse; }
-
-@keyframes float {
-    0% { transform: translate(0, 0) scale(1); }
-    100% { transform: translate(40px, 60px) scale(1.1); }
+.blob-1 {
+    top: -100px;
+    right: -100px;
+    animation: float 15s infinite alternate;
 }
 
-/* Validation Styles */
+.blob-2 {
+    bottom: -100px;
+    left: -100px;
+    animation: float 18s infinite alternate-reverse;
+}
+
+@keyframes float {
+    0% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    100% {
+        transform: translate(40px, 60px) scale(1.1);
+    }
+}
+
+/* ============================================
+   Validation Styles
+   ============================================ */
 .field-validation-error {
-    color: #f87171;
+    color: var(--destructive);
     font-size: 0.75rem;
     margin-top: 0.25rem;
     display: block;
 }
 
 .input-validation-error {
-    border-color: #f87171 !important;
+    border-color: var(--destructive) !important;
 }
 
 .validation-summary-errors {
-    background: rgba(248, 113, 113, 0.1);
-    border: 1px solid rgba(248, 113, 113, 0.2);
-    border-radius: 12px;
+    background: oklch(from var(--destructive) l c h / 0.1);
+    border: 1px solid oklch(from var(--destructive) l c h / 0.2);
+    border-radius: var(--radius);
     padding: 1rem;
     margin-bottom: 1.5rem;
-    color: #f87171;
+    color: var(--destructive);
     font-size: 0.875rem;
 }
 
@@ -274,7 +450,9 @@ footer {
     padding-left: 1.25rem;
 }
 
-/* Password Toggle Icon */
+/* ============================================
+   Password Toggle
+   ============================================ */
 .password-wrapper {
     position: relative;
 }
@@ -285,10 +463,85 @@ footer {
     top: 50%;
     transform: translateY(-50%);
     cursor: pointer;
-    color: var(--text-muted);
+    color: var(--muted-foreground);
     transition: var(--transition);
 }
 
 .password-toggle:hover {
-    color: var(--text-main);
+    color: var(--foreground);
+}
+
+/* ============================================
+   Auth Footer Link
+   ============================================ */
+.auth-footer {
+    text-align: center;
+    margin-top: 1.5rem;
+}
+
+.auth-footer p {
+    color: var(--muted-foreground);
+    font-size: 0.9rem;
+}
+
+.auth-link {
+    color: var(--primary) !important;
+    font-weight: 600;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.auth-link:hover {
+    color: var(--accent) !important;
+    text-decoration: underline;
+}
+
+/* ============================================
+   Form Check (Remember Me)
+   ============================================ */
+.form-check-input {
+    background-color: var(--input-bg) !important;
+    border-color: var(--border) !important;
+}
+
+.form-check-input:checked {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+}
+
+/* ============================================
+   Smooth transitions for dark mode
+   ============================================ */
+.navbar,
+.auth-card,
+footer,
+.card-surface,
+.drawing-card,
+.hero-content,
+.modal-card,
+.plan-card,
+.org-nav {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* ============================================
+   Bootstrap overrides for dark mode
+   ============================================ */
+html.dark .text-muted {
+    color: var(--muted-foreground) !important;
+}
+
+html.dark .navbar-toggler-icon {
+    filter: invert(1);
+}
+
+html.dark .alert-danger {
+    background-color: oklch(from var(--destructive) l c h / 0.15);
+    border-color: oklch(from var(--destructive) l c h / 0.3);
+    color: var(--destructive);
+}
+
+/* Spinner override for theme */
+.text-indigo {
+    color: var(--primary) !important;
 }
