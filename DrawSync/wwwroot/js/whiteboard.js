@@ -540,6 +540,7 @@ class Whiteboard {
       return;
     }
     if (this.currentTool === "eraser") {
+      this.isDrawing = true;
       this.eraseAt(worldPos);
       return;
     }
@@ -598,7 +599,9 @@ class Whiteboard {
       return;
     }
     if (this.currentTool === "eraser") {
-      this.eraseAt(worldPos);
+      if (this.isDrawing) {
+        this.eraseAt(worldPos);
+      }
       return;
     }
     if (this.isResizing && this.selectedElements.length === 1) {
@@ -717,20 +720,62 @@ class Whiteboard {
     if (this.isDrawing && this.currentElement) {
       this.elements.push(this.currentElement);
       this.currentElement = null;
-      this.isDrawing = false;
       this.save();
       this.render();
     }
+    this.isDrawing = false;
     this.canvas.style.cursor = "crosshair";
   }
 
   eraseAt(worldPos) {
     const radius = (this.style.strokeWidth * 2) / this.camera.zoom;
-    const toRemove = this.elements.filter((el) =>
-      el.intersects(worldPos.x, worldPos.y, radius),
-    );
-    if (toRemove.length > 0) {
-      this.elements = this.elements.filter((el) => !toRemove.includes(el));
+    let changed = false;
+    const newElements = [];
+
+    for (const el of this.elements) {
+      if (el.intersects(worldPos.x, worldPos.y, radius)) {
+        changed = true;
+        if (el.type === "pencil") {
+          const segments = [];
+          let currentSegment = [];
+          for (const p of el.points) {
+            const d = Math.sqrt((p.x - worldPos.x) ** 2 + (p.y - worldPos.y) ** 2);
+            if (d >= radius) {
+              currentSegment.push(p);
+            } else {
+              if (currentSegment.length > 0) {
+                segments.push(currentSegment);
+                currentSegment = [];
+              }
+            }
+          }
+          if (currentSegment.length > 0) {
+            segments.push(currentSegment);
+          }
+
+          for (const seg of segments) {
+            if (seg.length >= 2) {
+              const newEl = new Element("pencil", seg[0].x, seg[0].y, el);
+              newEl.points = seg;
+              newEl.strokeColor = el.strokeColor;
+              newEl.strokeWidth = el.strokeWidth;
+              newEl.strokeStyle = el.strokeStyle;
+              newEl.opacity = el.opacity;
+              newElements.push(newEl);
+            }
+          }
+        }
+        // Non-pencil shape elements are erased completely upon intersection
+      } else {
+        newElements.push(el);
+      }
+    }
+
+    if (changed) {
+      this.elements = newElements;
+      this.selectedElements = this.selectedElements.filter((el) =>
+        this.elements.includes(el),
+      );
       this.render();
       this.save();
     }
