@@ -66,7 +66,8 @@ namespace DrawSync.Controllers
             {
                 Id = ID.Unique(),
                 OrganizationId = organizationId,
-                Name = req.Name
+                Name = req.Name,
+                Type = req.Type ?? "whiteboard"
             };
 
             await _unitOfWork.Drawings.AddAsync(drawing, new List<string> {
@@ -453,6 +454,7 @@ namespace DrawSync.Controllers
         public class CreateDrawingRequest
         {
             public string Name { get; set; } = null!;
+            public string? Type { get; set; }
         }
 
         public class UpdateDrawingRequest

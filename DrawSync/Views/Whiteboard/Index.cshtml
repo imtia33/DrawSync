@@ -96,6 +96,25 @@
                 <label for="boardName">Board Name</label>
                 <input type="text" id="boardName" placeholder="E.g. Project brainstorm" required autofocus>
             </div>
+            <div class="form-input-group" style="margin-top: 20px;">
+                <label>Board Type</label>
+                <div class="type-selector">
+                    <label class="type-option">
+                        <input type="radio" name="boardType" value="whiteboard" checked>
+                        <div class="type-card">
+                            <i class="bi bi-canvas"></i>
+                            <span>Whiteboard</span>
+                        </div>
+                    </label>
+                    <label class="type-option">
+                        <input type="radio" name="boardType" value="map">
+                        <div class="type-card">
+                            <i class="bi bi-map"></i>
+                            <span>Map</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
             <div class="modal-footer">
                 <button type="button" id="closeModalBtn" class="btn-cancel">Cancel</button>
                 <button type="submit" class="btn-submit">Create Board</button>
@@ -234,6 +253,30 @@
     .btn-submit { flex: 1.5; padding: 14px; background: var(--primary); border: none; border-radius: 10px; font-weight: 600; color: var(--primary-foreground); cursor: pointer; transition: all 0.2s; }
     .btn-submit:hover { background: var(--primary-hover); }
 
+    /* Type Selector */
+    .type-selector { display: flex; gap: 16px; margin-top: 8px; }
+    .type-option { flex: 1; cursor: pointer; }
+    .type-option input { display: none; }
+    .type-card { 
+        padding: 16px; 
+        border: 1px solid var(--border); 
+        border-radius: 12px; 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        gap: 8px; 
+        transition: all 0.2s;
+        background: var(--sidebar);
+    }
+    .type-card i { font-size: 1.5rem; color: var(--muted-foreground); }
+    .type-card span { font-weight: 600; font-size: 0.85rem; color: var(--muted-foreground); }
+    .type-option input:checked + .type-card { 
+        border-color: var(--primary); 
+        background: oklch(from var(--primary) l c h / 0.1); 
+    }
+    .type-option input:checked + .type-card i { color: var(--primary); }
+    .type-option input:checked + .type-card span { color: var(--primary); }
+
     /* Animations */
     @@keyframes slideDownFade {
         from { opacity: 0; transform: translateY(-10px); }
@@ -315,11 +358,19 @@
                     const url = currentOrgId 
                         ? `/organization/${currentOrgId}/whiteboard/board/${b.id}`
                         : `/whiteboard/board/${b.id}`;
+                    const isMap = b.type === 'map';
                     return `
                         <div class="board-card" onclick="window.location.href='${url}'" id="card-${b.id}">
-                            <div class="card-thumbnail"><div class="preview-placeholder"></div></div>
+                            <div class="card-thumbnail">
+                                <div class="preview-placeholder">
+                                    <i class="bi ${isMap ? 'bi-map' : 'bi-brush'}" style="font-size: 2rem; color: var(--muted-foreground); opacity: 0.5;"></i>
+                                </div>
+                            </div>
                             <div class="card-footer">
-                                <h3>${b.name}</h3>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="bi ${isMap ? 'bi-map-fill' : 'bi-brush-fill'}" style="color: ${isMap ? '#3b82f6' : 'var(--primary)'}; font-size: 0.9rem;"></i>
+                                    <h3>${b.name}</h3>
+                                </div>
                                 <div class="card-meta">
                                     <div class="meta-item"><i class="bi bi-clock"></i> Updated ${new Date(b.updatedAt).toLocaleDateString()}</div>
                                     <div class="meta-item"><i class="bi bi-calendar"></i> Created ${new Date(b.createdAt).toLocaleDateString()}</div>
@@ -392,7 +443,8 @@
         async function createBoard(e) {
             e.preventDefault();
             const name = document.getElementById('boardName').value;
-            const board = await window.DrawStorage.createBoard(name, currentOrgId || null);
+            const type = document.querySelector('input[name="boardType"]:checked').value;
+            const board = await window.DrawStorage.createBoard(name, type);
             const url = currentOrgId 
                 ? `/organization/${currentOrgId}/whiteboard/board/${board.id}`
                 : `/whiteboard/board/${board.id}`;

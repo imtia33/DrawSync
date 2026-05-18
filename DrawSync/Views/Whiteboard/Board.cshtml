@@ -1,28 +1,61 @@
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Drawing Board";
-}
-
-@section Scripts {
-    <script src="~/js/storage.js"></script>
-    <script src="~/js/whiteboard.js"></script>
+    ViewData["Title"] = ViewBag.BoardName ?? "Drawing Board";
+    var boardType = ViewBag.BoardType as string ?? "whiteboard";
 }
 
 <link rel="stylesheet" href="~/css/whiteboard.css" />
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+@section Scripts {
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="~/js/storage.js"></script>
+    <script src="~/js/whiteboard.js"></script>
+    <script src="~/js/map_integration.js"></script>
+    
+    <script>
+        document.body.classList.add('whiteboard-page');
+        window.boardId = '@ViewBag.BoardId';
+        const serverBoardType = '@boardType';
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            let actualType = serverBoardType;
+            
+            // If local, we need to check IndexedDB
+            if (actualType === 'local') {
+                const board = await window.DrawStorage.getBoard(window.boardId);
+                actualType = board ? board.type : 'whiteboard';
+            }
+
+            if (actualType === 'map') {
+                document.body.classList.add('map-mode');
+                initMapBoard("mapContainer", window.boardId);
+            } else {
+                document.body.classList.add('whiteboard-mode');
+                if (window.Whiteboard) {
+                    window.whiteboard = new Whiteboard("whiteboardCanvas", window.boardId);
+                }
+            }
+        });
+    </script>
+}
 
 <div class="app-container">
-    <!-- Top Bar: Navigation and Tool Selection -->
+    <!-- Top Bar -->
     <header class="app-header">
         <div class="header-left">
             <a href="/whiteboard" class="back-btn" title="Back to Dashboard">
                 <i class="bi bi-arrow-left"></i>
             </a>
             <div class="divider"></div>
-            <span id="displayBoardName" class="board-name">Loading Board...</span>
+            <span id="displayBoardName" class="board-name">Loading...</span>
             <span id="saveStatus" class="save-status">Saved</span>
         </div>
 
-        <div class="toolbar-center">
+        <!-- Whiteboard Toolbar (Visible only in whiteboard mode) -->
+        <div class="toolbar-center whiteboard-only">
             <div class="tool-group">
                 <button class="tool-btn active" data-tool="select" title="Selection (V)"><i class="bi bi-cursor-fill"></i></button>
                 <button class="tool-btn" data-tool="pencil" title="Pencil (P)"><i class="bi bi-pencil-fill"></i></button>
@@ -39,22 +72,39 @@
             </div>
         </div>
 
+        <!-- Map Toolbar (Visible only in map mode) -->
+        <div class="toolbar-center map-only">
+            <div class="tool-group">
+                <button class="map-tool-btn active" data-map-tool="pan" title="Move Map"><i class="bi bi-arrows-move"></i></button>
+                <button class="map-tool-btn" data-map-tool="marker" title="Add Marker"><i class="bi bi-geo-alt-fill"></i></button>
+                <button class="map-tool-btn" data-map-tool="line" title="Draw Line"><i class="bi bi-slash-lg"></i></button>
+                <button class="map-tool-btn" data-map-tool="arrow" title="Draw Arrow"><i class="bi bi-arrow-up-right"></i></button>
+                <button class="map-tool-btn" data-map-tool="polygon" title="Draw Area"><i class="bi bi-pentagon-fill"></i></button>
+            </div>
+            <div class="tool-divider"></div>
+            <span class="map-info-text">GIS Construction Planner</span>
+        </div>
+
         <div class="header-right">
-            <button id="undoBtn" class="action-btn" title="Undo (Ctrl+Z)"><i class="bi bi-arrow-counterclockwise"></i></button>
-            <button id="redoBtn" class="action-btn" title="Redo (Ctrl+Y)"><i class="bi bi-arrow-clockwise"></i></button>
+            <button id="undoBtn" class="action-btn whiteboard-only" title="Undo (Ctrl+Z)"><i class="bi bi-arrow-counterclockwise"></i></button>
+            <button id="redoBtn" class="action-btn whiteboard-only" title="Redo (Ctrl+Y)"><i class="bi bi-arrow-clockwise"></i></button>
             <div class="export-dropdown">
                 <button id="exportBtn" class="action-btn primary" title="Export Options">
                     <i class="bi bi-download"></i>
                     Export
                 </button>
                 <div id="exportMenu" class="export-menu">
-                    <button id="exportPng" class="export-item">
+                    <button id="exportPng" class="export-item whiteboard-only">
                         <i class="bi bi-image"></i>
                         <span>Transparent PNG</span>
                     </button>
-                    <button id="exportJpg" class="export-item">
+                    <button id="exportJpg" class="export-item whiteboard-only">
                         <i class="bi bi-file-earmark-image"></i>
                         <span>JPG with Background</span>
+                    </button>
+                    <button class="export-item map-only" onclick="window.print()">
+                        <i class="bi bi-printer"></i>
+                        <span>Print Map</span>
                     </button>
                 </div>
             </div>
@@ -62,8 +112,8 @@
     </header>
 
     <div class="workspace-main">
-        <!-- Sidebar: Styles and Board Settings -->
-        <aside class="app-sidebar">
+        <!-- Sidebar (Whiteboard only) -->
+        <aside class="app-sidebar whiteboard-only">
             <section class="sidebar-section">
                 <label>Stroke & Fill</label>
                 <div class="swatch-row">
@@ -112,10 +162,6 @@
                     <div class="bg-item" data-bg="#ffffff" style="background: #ffffff; border: 1px solid #eee;" title="Pure White"></div>
                     <div class="bg-item" data-bg="#1a1a1a" style="background: #1a1a1a;" title="Dark Mode"></div>
                     <div class="bg-item" data-bg="#2d3436" style="background: #2d3436;" title="Deep Gray"></div>
-                    <div class="bg-item" data-bg="#fdf6e3" style="background: #fdf6e3;" title="Solarized"></div>
-                    <div class="bg-item" data-bg="#e0f2fe" style="background: #e0f2fe;" title="Soft Blue"></div>
-                    <div class="bg-item" data-bg="#dcfce7" style="background: #dcfce7;" title="Soft Green"></div>
-                    <div class="bg-item" data-bg="#fce7f3" style="background: #fce7f3;" title="Soft Pink"></div>
                     <div class="bg-item grid-item" data-bg="#f8f9fa" data-grid="true" title="Grid View">
                         <div class="mini-grid"></div>
                     </div>
@@ -127,12 +173,13 @@
             </div>
         </aside>
 
-        <!-- Main Canvas Area -->
+        <!-- Main Area -->
         <main class="canvas-container" id="canvasParent">
-            <canvas id="whiteboardCanvas"></canvas>
+            <canvas id="whiteboardCanvas" class="whiteboard-only"></canvas>
+            <div id="mapContainer" class="map-only" style="width: 100%; height: 100%;"></div>
             
-            <!-- Zoom Controls (Overlay on Canvas) -->
-            <div class="zoom-overlay">
+            <!-- Zoom Controls (Whiteboard only) -->
+            <div class="zoom-overlay whiteboard-only">
                 <button id="zoomOut" class="zoom-btn"><i class="bi bi-dash"></i></button>
                 <span id="zoomLevel">100%</span>
                 <button id="zoomIn" class="zoom-btn"><i class="bi bi-plus"></i></button>
@@ -140,8 +187,8 @@
         </main>
     </div>
 
-    <!-- Floating Color Picker (Hidden by default, positioned relative to swatch) -->
-    <div id="colorPickerPanel" class="popover-picker" style="display: none;">
+    <!-- Floating Color Picker (Hidden by default, Whiteboard Only) -->
+    <div id="colorPickerPanel" class="popover-picker whiteboard-only" style="display: none;">
         <div class="picker-header">
             <span id="pickerTitle">Stroke Color</span>
             <button id="closePicker"><i class="bi bi-x"></i></button>
@@ -165,11 +212,11 @@
         </div>
     </div>
 
-    <!-- Adaptive Cursor -->
-    <div id="customCursor" class="adaptive-cursor"></div>
+    <!-- Adaptive Cursor (Whiteboard Only) -->
+    <div id="customCursor" class="adaptive-cursor whiteboard-only"></div>
 
-    <!-- Custom Alert Modal -->
-    <div id="clearConfirmModal" class="custom-modal">
+    <!-- Custom Alert Modal (Whiteboard Only) -->
+    <div id="clearConfirmModal" class="custom-modal whiteboard-only">
         <div class="modal-card">
             <div class="modal-icon"><i class="bi bi-exclamation-triangle"></i></div>
             <h2>Clear Whiteboard?</h2>
@@ -182,7 +229,50 @@
     </div>
 </div>
 
-<script>
-    document.body.classList.add('whiteboard-page');
-    window.boardId = '@ViewBag.BoardId';
-</script>
+<style>
+    .app-header { z-index: 2000 !important; background: var(--bg-header) !important; }
+    .app-container { z-index: 1500 !important; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; }
+    
+    /* Force hide default layout elements */
+    header:not(.app-header) { display: none !important; }
+    footer { display: none !important; }
+    .main-content-container { padding-top: 0 !important; margin: 0 !important; }
+
+    body:not(.whiteboard-mode) .whiteboard-only { display: none !important; }
+    body:not(.map-mode) .map-only { display: none !important; }
+    
+    .map-mode .app-sidebar { display: none; }
+    .map-mode .canvas-container { padding: 0 !important; }
+    
+    .map-tool-btn {
+        background: transparent;
+        border: none;
+        color: var(--muted-foreground);
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .map-tool-btn:hover { background: var(--secondary); color: var(--foreground); }
+    .map-tool-btn.active { background: oklch(from var(--primary) l c h / 0.1); color: var(--primary); }
+    
+    .map-info-text {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--muted-foreground);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        padding-left: 10px;
+    }
+
+    #mapContainer {
+        background: #aad3df; /* Leaflet default bg */
+        border-radius: 12px;
+        overflow: hidden;
+    }
+</style>
+

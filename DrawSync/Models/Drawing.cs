@@ -13,6 +13,9 @@ namespace DrawSync.Models
         [JsonProperty("name")]
         public string Name { get; set; } = null!;
 
+        [JsonProperty("type")]
+        public string Type { get; set; } = "whiteboard";
+
         [JsonProperty("$createdAt")]
         public string CreatedAt { get; set; } = null!;
 
