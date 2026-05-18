@@ -8,8 +8,8 @@ class Element {
     this.type = type;
     this.x = x;
     this.y = y;
-    this.width = 0;
-    this.height = 0;
+    this.width = style.width || 0;
+    this.height = style.height || 0;
     this.strokeColor = style.strokeColor;
     this.fillColor = style.fillColor;
     this.strokeWidth = style.strokeWidth;
@@ -18,6 +18,14 @@ class Element {
     this.points = []; // [{x, y}]
     this.endX = x;
     this.endY = y;
+
+    // Text Specific Styles
+    this.text = style.text || "";
+    this.fontFamily = style.fontFamily || "sans-serif";
+    this.fontSize = style.fontSize || 24;
+    this.bold = style.bold || false;
+    this.italic = style.italic || false;
+    this.underline = style.underline || false;
   }
 
   getBounds() {
@@ -60,6 +68,10 @@ class Element {
       y > bounds.maxY + padding
     )
       return false;
+
+    if (this.type === "text") {
+      return true;
+    }
 
     if (this.type === "pencil") {
       return this.points.some(
@@ -159,6 +171,9 @@ class Element {
       case "arrow":
         this.drawArrow(ctx);
         break;
+      case "text":
+        this.drawText(ctx);
+        break;
     }
     ctx.restore();
   }
@@ -203,6 +218,45 @@ class Element {
     );
     ctx.stroke();
   }
+
+  drawText(ctx) {
+    if (!this.text) return;
+    ctx.save();
+    ctx.textBaseline = "top";
+
+    let fontStyle = "";
+    if (this.italic) fontStyle += "italic ";
+    if (this.bold) fontStyle += "bold ";
+    ctx.font = `${fontStyle}${this.fontSize}px ${this.fontFamily}`;
+
+    const lines = this.text.split("\n");
+    const lineHeight = this.fontSize * 1.2;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const lineY = this.y + i * lineHeight;
+
+      if (this.fillColor !== "transparent") {
+        ctx.fillText(line, this.x, lineY);
+      }
+
+      if (this.strokeColor !== "transparent" && this.strokeWidth > 0) {
+        ctx.strokeText(line, this.x, lineY);
+      }
+
+      if (this.underline) {
+        const textWidth = ctx.measureText(line).width;
+        ctx.beginPath();
+        const underlineY = lineY + this.fontSize * 0.95;
+        ctx.moveTo(this.x, underlineY);
+        ctx.lineTo(this.x + textWidth, underlineY);
+        ctx.lineWidth = Math.max(1, this.fontSize / 15);
+        ctx.strokeStyle = this.fillColor !== "transparent" ? this.fillColor : this.strokeColor;
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
 }
 
 class Whiteboard {
@@ -229,7 +283,13 @@ class Whiteboard {
       strokeWidth: 2,
       strokeStyle: "solid",
       opacity: 100,
+      fontFamily: "sans-serif",
+      fontSize: 24,
+      bold: false,
+      italic: false,
+      underline: false,
     };
+    this.isTyping = false;
     this.backgroundColor = "#f8f9fa";
     this.hasGrid = false;
     this.cpTarget = "stroke";
@@ -315,6 +375,7 @@ class Whiteboard {
       this.openColorPicker("stroke", e);
     document.getElementById("fillSwatchBtn").onclick = (e) =>
       this.openColorPicker("fill", e);
+
     document.getElementById("closePicker").onclick = () =>
       (document.getElementById("colorPickerPanel").style.display = "none");
 
@@ -353,6 +414,48 @@ class Whiteboard {
 
     document.getElementById("zoomIn").onclick = () => this.changeZoom(0.2);
     document.getElementById("zoomOut").onclick = () => this.changeZoom(-0.2);
+
+    document.getElementById("fontFamily").onchange = (e) => {
+      this.updateSelectedTextStyle("fontFamily", e.target.value);
+    };
+    document.getElementById("fontSize").oninput = (e) => {
+      const val = parseInt(e.target.value);
+      document.getElementById("fontSizeVal").textContent = val + "px";
+      this.updateSelectedTextStyle("fontSize", val);
+    };
+    document.getElementById("btnBold").onclick = () => {
+      const btn = document.getElementById("btnBold");
+      const active = !btn.classList.contains("active");
+      btn.classList.toggle("active", active);
+      this.updateSelectedTextStyle("bold", active);
+    };
+    document.getElementById("btnItalic").onclick = () => {
+      const btn = document.getElementById("btnItalic");
+      const active = !btn.classList.contains("active");
+      btn.classList.toggle("active", active);
+      this.updateSelectedTextStyle("italic", active);
+    };
+    document.getElementById("btnUnderline").onclick = () => {
+      const btn = document.getElementById("btnUnderline");
+      const active = !btn.classList.contains("active");
+      btn.classList.toggle("active", active);
+      this.updateSelectedTextStyle("underline", active);
+    };
+    this.canvas.addEventListener("dblclick", (e) => {
+      if (this.currentTool !== "select") return;
+      const worldPos = this.screenToWorld(e.clientX, e.clientY);
+      const clicked = this.elements
+        .slice()
+        .reverse()
+        .find((el) => el.type === "text" && el.contains(worldPos.x, worldPos.y));
+      if (clicked) {
+        const rect = this.canvas.getBoundingClientRect();
+        const screenX = rect.left + clicked.x * this.camera.zoom + this.camera.x;
+        const screenY = rect.top + clicked.y * this.camera.zoom + this.camera.y;
+        e.preventDefault();
+        this.startTyping(clicked, screenX, screenY, clicked);
+      }
+    });
   }
 
   setTool(tool) {
@@ -366,6 +469,7 @@ class Whiteboard {
     document
       .querySelectorAll(".tool-btn")
       .forEach((b) => b.classList.toggle("active", b.dataset.tool === tool));
+    this.updateTextSettingsVisibility();
     this.render();
   }
 
@@ -507,8 +611,10 @@ class Whiteboard {
     document.getElementById("colorPreview").style.backgroundColor = color;
     const key = this.cpTarget === "stroke" ? "strokeColor" : "fillColor";
     this.updateSelectedStyle(key, color);
-    document.getElementById(this.cpTarget + "Swatch").style.backgroundColor =
-      color;
+
+    const swatch = document.getElementById(this.cpTarget + "Swatch");
+    swatch.style.backgroundColor = color;
+    swatch.classList.toggle("is-transparent", color === "transparent");
   }
 
   openColorPicker(target, e) {
@@ -516,7 +622,8 @@ class Whiteboard {
     const panel = document.getElementById("colorPickerPanel");
     panel.style.display = "block";
     panel.style.left = "270px";
-    panel.style.top = e.clientY - 100 + "px";
+    // Clamp the top position so it never goes off-screen or collides awkwardly with the top border
+    panel.style.top = Math.max(70, e.clientY - 100) + "px";
     document.getElementById("pickerTitle").textContent =
       target === "stroke" ? "Stroke Color" : "Fill Color";
   }
@@ -544,6 +651,12 @@ class Whiteboard {
       this.eraseAt(worldPos);
       return;
     }
+    if (this.currentTool === "text") {
+      if (this.isTyping) return;
+      e.preventDefault();
+      this.startTyping(worldPos, clientX, clientY);
+      return;
+    }
     if (this.currentTool === "select") {
       const handle = this.getResizeHandle(worldPos);
       if (handle) {
@@ -564,10 +677,14 @@ class Whiteboard {
             );
           else this.selectedElements.push(clicked);
         }
+        if (clicked.type === "text") {
+          this.syncTextSettingsUI(clicked);
+        }
         this.isMoving = true;
       } else {
         this.selectedElements = [];
       }
+      this.updateTextSettingsVisibility();
       this.render();
       return;
     }
@@ -840,6 +957,7 @@ class Whiteboard {
   }
 
   onKeyDown(e) {
+    if (this.isTyping) return;
     if (e.code === "Space") this.isSpacePressed = true;
     if (e.key === "Delete" || e.key === "Backspace") {
       if (this.selectedElements.length > 0) {
@@ -869,6 +987,7 @@ class Whiteboard {
       l: "line",
       a: "arrow",
       d: "diamond",
+      t: "text",
     };
     if (tools[e.key.toLowerCase()]) this.setTool(tools[e.key.toLowerCase()]);
   }
@@ -887,10 +1006,23 @@ class Whiteboard {
     this.ctx.save();
     this.ctx.translate(this.camera.x, this.camera.y);
     this.ctx.scale(this.camera.zoom, this.camera.zoom);
+
+    // Draw non-text shape elements first
     this.elements.forEach((el) => {
-      el.draw(this.ctx);
-      if (this.selectedElements.includes(el)) this.drawSelection(el);
+      if (el.type !== "text") {
+        el.draw(this.ctx);
+        if (this.selectedElements.includes(el)) this.drawSelection(el);
+      }
     });
+
+    // Draw text elements on top so text overlays shapes
+    this.elements.forEach((el) => {
+      if (el.type === "text") {
+        el.draw(this.ctx);
+        if (this.selectedElements.includes(el)) this.drawSelection(el);
+      }
+    });
+
     if (this.currentElement) this.currentElement.draw(this.ctx);
     this.ctx.restore();
   }
@@ -1002,6 +1134,192 @@ class Whiteboard {
     link.download = `whiteboard.${ext}`;
     link.href = tempCanvas.toDataURL(format, 0.9);
     link.click();
+  }
+
+  updateTextSettingsVisibility() {
+    const textSettings = document.getElementById("textSettingsSection");
+    if (textSettings) {
+      const hasTextSelected = this.selectedElements.some((el) => el.type === "text");
+      textSettings.style.display = (this.currentTool === "text" || hasTextSelected) ? "block" : "none";
+    }
+  }
+
+  syncTextSettingsUI(el) {
+    if (el.type !== "text") return;
+    document.getElementById("fontFamily").value = el.fontFamily;
+    document.getElementById("fontSize").value = el.fontSize;
+    document.getElementById("fontSizeVal").textContent = el.fontSize + "px";
+    document.getElementById("btnBold").classList.toggle("active", el.bold);
+    document.getElementById("btnItalic").classList.toggle("active", el.italic);
+    document.getElementById("btnUnderline").classList.toggle("active", el.underline);
+  }
+
+  updateSelectedTextStyle(key, val) {
+    this.style[key] = val;
+    this.selectedElements.forEach((el) => {
+      if (el.type === "text") {
+        el[key] = val;
+        this.updateTextSize(el);
+      }
+    });
+    if (this.selectedElements.length > 0) this.save();
+    this.render();
+  }
+
+  updateTextSize(el) {
+    this.ctx.save();
+    let fontStyle = "";
+    if (el.italic) fontStyle += "italic ";
+    if (el.bold) fontStyle += "bold ";
+    this.ctx.font = `${fontStyle}${el.fontSize}px ${el.fontFamily}`;
+
+    const lines = el.text.split("\n");
+    let maxWidth = 0;
+    for (const line of lines) {
+      const w = this.ctx.measureText(line).width;
+      if (w > maxWidth) maxWidth = w;
+    }
+    el.width = maxWidth;
+    el.height = lines.length * el.fontSize * 1.2;
+    this.ctx.restore();
+  }
+
+  startTyping(posOrEl, screenX, screenY, existingElement = null) {
+    this.isTyping = true;
+
+    const container = document.createElement("div");
+    container.className = "canvas-text-container";
+    container.style.left = screenX + "px";
+    container.style.top = screenY + "px";
+
+    const dragHandle = document.createElement("div");
+    dragHandle.className = "text-drag-handle";
+    dragHandle.innerHTML = '<i class="bi bi-arrows-move"></i>';
+    dragHandle.title = "Drag to move text box";
+    dragHandle.tabIndex = -1;
+
+    const textarea = document.createElement("textarea");
+    textarea.className = "canvas-text-input";
+
+    const source = existingElement || this.style;
+    textarea.style.fontFamily = source.fontFamily || "sans-serif";
+    textarea.style.fontSize = (source.fontSize || 24) * this.camera.zoom + "px";
+    textarea.style.fontWeight = source.bold ? "bold" : "normal";
+    textarea.style.fontStyle = source.italic ? "italic" : "normal";
+    textarea.style.textDecoration = source.underline ? "underline" : "none";
+
+    const textColor = source.fillColor !== "transparent" ? source.fillColor : (source.strokeColor !== "transparent" ? source.strokeColor : "#000000");
+    textarea.style.color = textColor;
+
+    textarea.value = existingElement ? existingElement.text : "";
+
+    container.appendChild(dragHandle);
+    container.appendChild(textarea);
+    document.body.appendChild(container);
+    textarea.focus();
+
+    let isDraggingText = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+
+    dragHandle.onmousedown = (de) => {
+      de.preventDefault();
+      de.stopPropagation();
+      isDraggingText = true;
+      dragStartX = de.clientX;
+      dragStartY = de.clientY;
+
+      const onMouseMoveDrag = (me) => {
+        if (!isDraggingText) return;
+        const dx = me.clientX - dragStartX;
+        const dy = me.clientY - dragStartY;
+
+        const currentLeft = parseFloat(container.style.left) || screenX;
+        const currentTop = parseFloat(container.style.top) || screenY;
+        container.style.left = currentLeft + dx + "px";
+        container.style.top = currentTop + dy + "px";
+
+        posOrEl.x += dx / this.camera.zoom;
+        posOrEl.y += dy / this.camera.zoom;
+
+        dragStartX = me.clientX;
+        dragStartY = me.clientY;
+      };
+
+      const onMouseUpDrag = () => {
+        isDraggingText = false;
+        window.removeEventListener("mousemove", onMouseMoveDrag);
+        window.removeEventListener("mouseup", onMouseUpDrag);
+        textarea.focus();
+      };
+
+      window.addEventListener("mousemove", onMouseMoveDrag);
+      window.addEventListener("mouseup", onMouseUpDrag);
+    };
+
+    const adjustTextarea = () => {
+      textarea.style.width = "auto";
+      textarea.style.height = "auto";
+      textarea.style.width = Math.max(150, textarea.scrollWidth + 10) + "px";
+      textarea.style.height = Math.max(35, textarea.scrollHeight) + "px";
+    };
+    textarea.oninput = adjustTextarea;
+    adjustTextarea();
+
+    let committed = false;
+    const commit = () => {
+      if (committed) return;
+      committed = true;
+      const text = textarea.value.trim();
+
+      if (text) {
+        if (existingElement) {
+          existingElement.text = text;
+          this.updateTextSize(existingElement);
+        } else {
+          const newEl = new Element("text", posOrEl.x, posOrEl.y, this.style);
+          newEl.text = text;
+          newEl.fontFamily = this.style.fontFamily;
+          newEl.fontSize = this.style.fontSize;
+          newEl.bold = this.style.bold;
+          newEl.italic = this.style.italic;
+          newEl.underline = this.style.underline;
+
+          this.updateTextSize(newEl);
+          this.elements.push(newEl);
+        }
+        this.save();
+        this.render();
+      } else if (existingElement) {
+        this.elements = this.elements.filter((el) => el !== existingElement);
+        this.save();
+        this.render();
+      }
+
+      document.body.removeChild(container);
+      this.isTyping = false;
+      this.isDrawing = false;
+      this.render();
+    };
+
+    textarea.onblur = (be) => {
+      if (isDraggingText) return;
+      if (be.relatedTarget === dragHandle) return;
+      commit();
+    };
+
+    textarea.onkeydown = (e) => {
+      if (e.key === "Escape") {
+        committed = true;
+        document.body.removeChild(container);
+        this.isTyping = false;
+        this.isDrawing = false;
+        this.render();
+      }
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+        commit();
+      }
+    };
   }
 }
 

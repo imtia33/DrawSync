@@ -60,6 +60,7 @@
                 <button class="tool-btn active" data-tool="select" title="Selection (V)"><i class="bi bi-cursor-fill"></i></button>
                 <button class="tool-btn" data-tool="pencil" title="Pencil (P)"><i class="bi bi-pencil-fill"></i></button>
                 <button class="tool-btn" data-tool="eraser" title="Eraser (E)"><i class="bi bi-eraser-fill"></i></button>
+                <button class="tool-btn" data-tool="text" title="Text (T)"><i class="bi bi-type"></i></button>
                 <button class="tool-btn" data-tool="pan" title="Pan (Space)"><i class="bi bi-hand-index-thumb"></i></button>
             </div>
             <div class="tool-divider"></div>
@@ -122,7 +123,7 @@
                         <span>Stroke</span>
                     </div>
                     <div class="swatch-container" id="fillSwatchBtn">
-                        <div class="swatch" id="fillSwatch" style="background: transparent;"></div>
+                        <div class="swatch is-transparent" id="fillSwatch" style="background: transparent;"></div>
                         <span>Fill</span>
                     </div>
                 </div>
@@ -152,6 +153,35 @@
                     <button class="style-toggle active" data-value="solid"><i class="bi bi-dash-lg"></i></button>
                     <button class="style-toggle" data-value="dashed"><i class="bi bi-distribute-horizontal"></i></button>
                     <button class="style-toggle" data-value="dotted"><i class="bi bi-three-dots"></i></button>
+                </div>
+            </section>
+
+            <section class="sidebar-section text-only-section" id="textSettingsSection" style="display: none;">
+                <label>Text Settings</label>
+                <div class="setting-item">
+                    <div class="setting-header" style="margin-bottom: 6px;">
+                        <span>Font Family</span>
+                    </div>
+                    <select id="fontFamily" class="style-select">
+                        <option value="sans-serif">Sans-Serif</option>
+                        <option value="serif">Serif</option>
+                        <option value="monospace">Monospace</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Impact">Impact</option>
+                        <option value="Comic Sans MS">Comic Sans MS</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-header">
+                        <span>Font Size</span>
+                        <span id="fontSizeVal">24px</span>
+                    </div>
+                    <input type="range" id="fontSize" min="8" max="100" value="24">
+                </div>
+                <div class="style-toggle-group font-style-group">
+                    <button class="style-toggle" id="btnBold" title="Bold" style="flex: 1;"><i class="bi bi-type-bold"></i></button>
+                    <button class="style-toggle" id="btnItalic" title="Italic" style="flex: 1;"><i class="bi bi-type-italic"></i></button>
+                    <button class="style-toggle" id="btnUnderline" title="Underline" style="flex: 1;"><i class="bi bi-type-underline"></i></button>
                 </div>
             </section>
 
@@ -191,7 +221,7 @@
     <div id="colorPickerPanel" class="popover-picker whiteboard-only" style="display: none;">
         <div class="picker-header">
             <span id="pickerTitle">Stroke Color</span>
-            <button id="closePicker"><i class="bi bi-x"></i></button>
+            <button id="closePicker" title="Close Panel"><i class="bi bi-x-lg"></i></button>
         </div>
         <div class="picker-body">
             <div class="wheel-box">

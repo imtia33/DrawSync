@@ -236,10 +236,39 @@ body.whiteboard-page footer {
   box-shadow: 0 0 0 1px var(--border-color);
   cursor: pointer;
   transition: transform 0.1s;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .swatch:active {
   transform: scale(0.95);
+}
+
+.swatch i {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: white !important;
+  background: #ef4444;
+  /* bright red */
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.15s ease;
+  pointer-events: auto;
+}
+
+.swatch i:hover {
+  background: #dc2626;
+  transform: scale(1.15);
+}
+
+.swatch i:active {
+  transform: scale(0.9);
 }
 
 .setting-item {
@@ -341,11 +370,13 @@ body.whiteboard-page footer {
 /* Canvas Area */
 .canvas-container {
   flex: 1;
-  flex-shrink: 1; /* Allow to shrink to fit */
+  flex-shrink: 1;
+  /* Allow to shrink to fit */
   position: relative;
   overflow: hidden;
   cursor: crosshair;
-  padding: 24px; /* Slightly more padding for better framing */
+  padding: 24px;
+  /* Slightly more padding for better framing */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -464,8 +495,9 @@ body.whiteboard-page footer {
   border-radius: 16px;
   box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.25);
   border: 1px solid var(--border-color);
-  z-index: 1000;
+  z-index: 2100 !important; /* Render above the top header and tools menu */
   padding: 4px;
+  overflow: visible !important;
 }
 
 .picker-header {
@@ -482,10 +514,44 @@ body.whiteboard-page footer {
 }
 
 #closePicker {
-  background: none;
-  border: none;
-  color: var(--text-muted);
+  background: rgba(239, 68, 68, 0.08) !important;
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  z-index: 1010;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0;
+  outline: none;
+}
+
+#closePicker:hover {
+  transform: rotate(90deg) scale(1.12);
+  box-shadow: 0 4px 12px rgba(255, 75, 43, 0.35);
+  background: linear-gradient(135deg, #ff416c, #ff4b2b) !important;
+  border-color: transparent;
+}
+
+#closePicker:hover i {
+  color: white !important;
+}
+
+#closePicker:active {
+  transform: scale(0.9);
+}
+
+#closePicker i {
+  color: #ef4444 !important; /* High contrast red cross by default */
+  font-size: 0.85rem;
+  font-weight: 900 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s;
 }
 
 .picker-body {
@@ -670,6 +736,7 @@ body.whiteboard-page footer {
   background: #dc2626;
   transform: translateY(-2px);
 }
+
 .maplibregl-ctrl-top-right,
 .maplibregl-ctrl-bottom-right,
 .maplibregl-ctrl-top-left,
@@ -679,5 +746,90 @@ body.whiteboard-page footer {
 
 /* Ensure map controls are clickable even if canvas is on top */
 #whiteboardCanvas {
-  pointer-events: auto; /* Default */
+  pointer-events: auto;
+  /* Default */
+}
+
+/* --- Text Settings styling --- */
+.style-select {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--secondary, #f3f4f6);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  color: var(--text-main, #111827);
+  font-size: 0.85rem;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.style-select:hover {
+  border-color: var(--accent-color, #4f46e5);
+}
+
+.style-select:focus {
+  border-color: var(--accent-color, #4f46e5);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.font-style-group {
+  margin-top: 15px;
+}
+
+.font-style-group .style-toggle {
+  font-size: 1rem;
+  padding: 8px;
+}
+
+/* Canvas dynamic text overlay input */
+.canvas-text-container {
+  display: flex;
+  align-items: flex-start;
+  position: fixed;
+  z-index: 3000;
+  pointer-events: auto;
+}
+
+.text-drag-handle {
+  cursor: move;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-color, #4f46e5);
+  color: white;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  margin-right: 6px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  flex-shrink: 0;
+  transition: transform 0.1s;
+  pointer-events: auto;
+}
+
+.text-drag-handle:active {
+  transform: scale(0.9);
+}
+
+.canvas-text-input {
+  box-sizing: border-box;
+  padding: 0px 4px !important;
+  margin: 0;
+  border: 1px dashed rgba(79, 70, 229, 0.45) !important;
+  border-radius: 4px;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: hidden;
+  resize: none;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  font-style: inherit;
+  line-height: 1.2;
+  white-space: pre;
+  outline: none !important;
+  pointer-events: auto;
 }
