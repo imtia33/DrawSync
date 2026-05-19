@@ -1,0 +1,65 @@
+@model DrawSync.Models.ViewModels.CompleteGoogleSignupViewModel
+@{
+    ViewData["Title"] = "Complete Registration";
+}
+
+<div class="blob-1 floating-blob"></div>
+<div class="blob-2 floating-blob"></div>
+
+<div class="auth-container">
+    <div class="auth-card" style="max-width: 480px;">
+        <h1 class="auth-title">Welcome to DrawSync</h1>
+        <p class="auth-subtitle">Just one last step to set up your workspace</p>
+
+        <form asp-action="CompleteGoogleSignup" method="post" id="signupForm">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="form-group">
+                <label class="form-label">Google Profile Name</label>
+                <input class="form-control-custom" value="@Model.Name" readonly disabled style="opacity: 0.7; cursor: not-allowed; background: var(--secondary);" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Google Email Address</label>
+                <input class="form-control-custom" value="@Model.Email" readonly disabled style="opacity: 0.7; cursor: not-allowed; background: var(--secondary);" />
+            </div>
+
+            <div class="form-group">
+                <label asp-for="OrganizationName" class="form-label">Choose Workspace / Organization Name</label>
+                <input asp-for="OrganizationName" class="form-control-custom" placeholder="e.g. Acme Corp, Design Team" autofocus />
+                <span asp-validation-for="OrganizationName" class="field-validation-error"></span>
+            </div>
+
+            <button type="submit" class="btn-primary-custom w-100 mt-2" id="submitBtn">
+                <span>Complete Registration</span>
+            </button>
+        </form>
+
+        <div class="auth-footer" style="margin-top: 1.5rem;">
+            <p>
+                Want to cancel? 
+                <form asp-action="Logout" method="post" style="display: inline;">
+                    <button type="submit" class="auth-link" style="background: none; border: none; padding: 0; font: inherit; cursor: pointer; text-decoration: underline;">Cancel and Sign Out</button>
+                </form>
+            </p>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const signupForm = document.getElementById('signupForm');
+            const submitBtn = document.getElementById('submitBtn');
+
+            signupForm.addEventListener('submit', () => {
+                // Only disable and show spinner if model validations are clean on client
+                if (signupForm.checkValidity()) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Completing Setup...';
+                }
+            });
+        });
+    </script>
+}

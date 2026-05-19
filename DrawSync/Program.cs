@@ -20,14 +20,24 @@ builder.Services.AddHttpContextAccessor();
 // Prefer user secrets for local API key overrides
 builder.Configuration.AddUserSecrets<Program>(optional: true, reloadOnChange: true);
 
-// Configure Appwrite clients
-builder.Services.AddSingleton(sp =>
+// Configure Appwrite client per-request (Scoped) to ensure thread-safe session isolation
+builder.Services.AddScoped(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
+    var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+    
     var client = new Client();
     client
         .SetEndpoint(config["Appwrite:Endpoint"]!)
         .SetProject(config["Appwrite:Project"]!);
+
+    var httpContext = httpContextAccessor.HttpContext;
+    var sessionClaim = httpContext?.User?.FindFirst("AppwriteSession")?.Value;
+    if (!string.IsNullOrEmpty(sessionClaim))
+    {
+        client.SetSession(sessionClaim);
+    }
+    
     return client;
 });
 

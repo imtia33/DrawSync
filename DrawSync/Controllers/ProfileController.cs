@@ -7,10 +7,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Appwrite;
 using Appwrite.Services;
+using DrawSync.Filters;
 
 namespace DrawSync.Controllers
 {
     [Authorize]
+    [VerifiedUser]
     public class ProfileController : Controller
     {
         private readonly IUnitOfWork _unitOfWork;

@@ -2,10 +2,12 @@ using DrawSync.UnitOfWork.Interface;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using DrawSync.Filters;
 
 namespace DrawSync.Controllers
 {
     [Authorize]
+    [VerifiedUser]
     public class OrganizationController : Controller
     {
         private readonly IUnitOfWork _unitOfWork;

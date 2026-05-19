@@ -1,0 +1,68 @@
+@{
+    ViewData["Title"] = "Verify Your Email";
+}
+
+<div class="blob-1 floating-blob"></div>
+<div class="blob-2 floating-blob"></div>
+
+<div class="auth-container">
+    <div class="auth-card verification-card" style="max-width: 500px;">
+        <div class="verification-icon-wrapper">
+            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+        </div>
+
+        <h1 class="auth-title" style="font-size: 1.75rem;">Verify Your Email</h1>
+        <p class="auth-subtitle" style="margin-bottom: 1.5rem;">To start using DrawSync, please verify your email address.</p>
+
+        @if (ViewBag.Email != null)
+        {
+            <span class="email-highlight">@ViewBag.Email</span>
+        }
+
+        <p style="color: var(--muted-foreground); font-size: 0.95rem; line-height: 1.6; margin-bottom: 2rem;">
+            We've sent a verification link to your email. Please click the link inside that email to activate your account. If you don't see it, check your spam folder.
+        </p>
+
+        @if (TempData["ResendSuccess"] != null)
+        {
+            <div class="alert alert-success" style="margin-bottom: 20px; font-size: 0.9rem; text-align: left; background-color: oklch(from var(--primary) l c h / 0.1); border-color: oklch(from var(--primary) l c h / 0.2); color: var(--primary);">
+                @TempData["ResendSuccess"]
+            </div>
+        }
+        @if (TempData["ResendError"] != null)
+        {
+            <div class="alert alert-danger" style="margin-bottom: 20px; font-size: 0.9rem; text-align: left;">
+                @TempData["ResendError"]
+            </div>
+        }
+
+        <form asp-action="ResendVerification" method="post" id="resendForm" style="margin-bottom: 1.5rem;">
+            <button type="submit" class="btn-primary-custom w-100" id="resendBtn">
+                <span>Resend Verification Email</span>
+            </button>
+        </form>
+
+        <form asp-action="Logout" method="post" style="display: inline-block;">
+            <button type="submit" class="btn-logout-small">
+                <span>Sign Out / Use different account</span>
+            </button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const resendForm = document.getElementById('resendForm');
+            const resendBtn = document.getElementById('resendBtn');
+
+            resendForm.addEventListener('submit', () => {
+                resendBtn.disabled = true;
+                resendBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending...';
+            });
+        });
+    </script>
+}

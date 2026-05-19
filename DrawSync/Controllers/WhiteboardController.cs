@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using DrawSync.Filters;
 
 namespace DrawSync.Controllers
 {
     [Authorize]
+    [VerifiedUser]
     [Route("whiteboard")]
     [Route("organization/{organizationId}/whiteboard")]
     public class WhiteboardController : Controller

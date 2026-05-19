@@ -6,10 +6,12 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using Appwrite;
 using Appwrite.Services;
+using DrawSync.Filters;
 
 namespace DrawSync.Controllers
 {
     [Authorize]
+    [VerifiedUser]
     [Route("api/organization/{organizationId}")]
     [ApiController]
     public class OrganizationDashboardController : ControllerBase

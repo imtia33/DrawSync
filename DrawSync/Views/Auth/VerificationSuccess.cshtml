@@ -1,0 +1,27 @@
+@{
+    ViewData["Title"] = "Account Activated!";
+}
+
+<div class="blob-1 floating-blob"></div>
+<div class="blob-2 floating-blob"></div>
+
+<div class="auth-container">
+    <div class="auth-card verification-card" style="max-width: 500px;">
+        <div class="verification-icon-wrapper success">
+            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+        </div>
+
+        <h1 class="auth-title" style="font-size: 1.75rem; background: linear-gradient(to right, var(--primary), var(--accent));">Activation Successful!</h1>
+        <p class="auth-subtitle" style="margin-bottom: 2rem;">Your DrawSync account is now fully active.</p>
+
+        <p style="color: var(--muted-foreground); font-size: 0.95rem; line-height: 1.6; margin-bottom: 2.5rem;">
+            Thank you for verifying your email address. You have successfully unlocked access to your team workspace, collaborative boards, and premium whiteboard editing suites.
+        </p>
+
+        <a asp-controller="Organization" asp-action="Index" class="btn-primary-custom w-100">
+            <span>Proceed to Dashboard</span>
+        </a>
+    </div>
+</div>
