@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Appwrite;
 using Appwrite.Services;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,12 +21,14 @@ namespace DrawSync.Controllers
         private readonly IUnitOfWork _unitOfWork;
         private readonly Account _account;
         private readonly Teams _teams;
+        private readonly IConfiguration _config;
 
-        public AuthController(IUnitOfWork unitOfWork, Account account, Teams teams)
+        public AuthController(IUnitOfWork unitOfWork, Account account, Teams teams, IConfiguration config)
         {
             _unitOfWork = unitOfWork;
             _account = account;
             _teams = teams;
+            _config = config;
         }
 
         [HttpGet]
@@ -390,17 +393,28 @@ namespace DrawSync.Controllers
         // ============================================
 
         [HttpGet]
-        public async Task<IActionResult> ContinueWithGoogle()
+        public IActionResult ContinueWithGoogle()
         {
             try
             {
-                var successUrl = $"{Request.Scheme}://{Request.Host}/Auth/GoogleCallback";
-                var failureUrl = $"{Request.Scheme}://{Request.Host}/Auth/Login";
+                // Force HTTPS scheme to prevent browsers from stripping query parameters 
+                // during a secure (HTTPS Appwrite) to insecure (HTTP Local) downgrade
+                var successUrl = $"https://{Request.Host}/Auth/GoogleCallback";
+                var failureUrl = $"https://{Request.Host}/Auth/Login";
                 
-                var authUrl = await _account.CreateOAuth2Token(Appwrite.Enums.OAuthProvider.Google, successUrl, failureUrl);
+                var endpoint = _config["Appwrite:Endpoint"]?.TrimEnd('/');
+                var project = _config["Appwrite:Project"];
+                
+                // CRITICAL: Must use /account/tokens/oauth2/... for server-side callback parameter mapping
+                var authUrl = $"{endpoint}/account/tokens/oauth2/google" +
+                              $"?project={project}" +
+                              $"&success={Uri.EscapeDataString(successUrl)}" +
+                              $"&failure={Uri.EscapeDataString(failureUrl)}";
+
+                Console.WriteLine($"[DEBUG] Manually Constructed Google Auth URL: {authUrl}");
                 return Redirect(authUrl);
             }
-            catch (AppwriteException ex)
+            catch (Exception ex)
             {
                 TempData["LoginError"] = "Failed to start Google sign-in: " + ex.Message;
                 return RedirectToAction("Login");
@@ -410,10 +424,46 @@ namespace DrawSync.Controllers
         [HttpGet]
         public async Task<IActionResult> GoogleCallback(string userId, string secret)
         {
+            var queryParams = HttpContext.Request.Query.Select(q => $"{q.Key} = {q.Value}").ToList();
+            var debugInfo = $"[DEBUG] GoogleCallback incoming params: {string.Join(", ", queryParams)}";
+            Console.WriteLine(debugInfo);
+
             if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(secret))
             {
-                TempData["LoginError"] = "Google callback parameters are missing.";
-                return RedirectToAction("Login");
+                var fullUrl = $"{Request.Scheme}://{Request.Host}{Request.Path}{Request.QueryString}";
+                return Content($@"
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>OAuth Diagnostic Screen</title>
+                        <style>
+                            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; background: #121214; color: #e1e1e6; line-height: 1.6; }}
+                            .card {{ background: #202024; border: 1px solid #323238; padding: 30px; border-radius: 8px; max-width: 800px; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }}
+                            h2 {{ color: #FD366E; margin-top: 0; }}
+                            code {{ background: #121214; padding: 6px 10px; border-radius: 4px; color: #ff5e5e; font-family: monospace; display: block; word-break: break-all; margin-top: 8px; }}
+                            ul {{ padding-left: 20px; }}
+                            li {{ margin-bottom: 8px; font-family: monospace; color: #e1e1e6; }}
+                            .btn {{ display: inline-block; background: #FD366E; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold; margin-top: 20px; }}
+                            .btn:hover {{ background: #e02f60; }}
+                        </style>
+                    </head>
+                    <body>
+                        <div class='card'>
+                            <h2>[Diagnostic] Google Callback Handler</h2>
+                            <p>You have successfully landed on the callback route, but the required Appwrite OAuth credentials (<code>userId</code> and <code>secret</code>) were not found.</p>
+                            <hr style='border: 0; border-top: 1px solid #323238; margin: 20px 0;' />
+                            <p><strong>Full Browser Request URL:</strong></p>
+                            <code>{fullUrl}</code>
+                            <p><strong>Detected Query Parameters ({queryParams.Count}):</strong></p>
+                            <ul>
+                                {(queryParams.Count == 0 ? "<li>(No query parameters detected in the request)</li>" : string.Join("", queryParams.Select(p => $"<li>{p}</li>")))}
+                            </ul>
+                            <p style='color: #888; font-size: 0.9rem; margin-top: 20px;'>This screen is paused and will not auto-redirect so you can inspect the browser URL bar.</p>
+                            <a href='/Auth/Login' class='btn'>Back to Login</a>
+                        </div>
+                    </body>
+                    </html>
+                ", "text/html");
             }
 
             try
@@ -421,9 +471,9 @@ namespace DrawSync.Controllers
                 // Exchange credentials for session token
                 var session = await _account.CreateSession(userId, secret);
                 
-                // Inject session into Client service manually for this execution thread
+                // Inject session into Client service manually for this execution thread using the direct secret
                 var scopedClient = HttpContext.RequestServices.GetRequiredService<Client>();
-                scopedClient.SetSession(session.Secret);
+                scopedClient.SetSession(secret);
 
                 var account = await _account.Get();
                 
@@ -432,13 +482,13 @@ namespace DrawSync.Controllers
                 
                 if (user == null)
                 {
-                    // Redirect to final onboarding stage for completing new account registrations
-                    TempData["GoogleUserId"] = account.Id;
-                    TempData["GoogleName"] = account.Name;
-                    TempData["GoogleEmail"] = account.Email;
-                    TempData["GoogleSessionSecret"] = session.Secret;
-                    
-                    return RedirectToAction("CompleteGoogleSignup");
+                    // Redirect to final onboarding stage for completing new account registrations via query parameters
+                    return RedirectToAction("CompleteGoogleSignup", new { 
+                        email = account.Email, 
+                        name = account.Name, 
+                        userId = account.Id, 
+                        sessionSecret = secret 
+                    });
                 }
 
                 // Existing account logs in directly
@@ -451,7 +501,7 @@ namespace DrawSync.Controllers
                     new Claim(ClaimTypes.Email, user.Email),
                     new Claim(ClaimTypes.Role, role),
                     new Claim("IsVerified", "true"), // Google emails verified by default
-                    new Claim("AppwriteSession", session.Secret)
+                    new Claim("AppwriteSession", secret)
                 };
 
                 var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -475,10 +525,13 @@ namespace DrawSync.Controllers
         }
 
         [HttpGet]
-        public IActionResult CompleteGoogleSignup()
+        public IActionResult CompleteGoogleSignup(string? email, string? name, string? userId, string? sessionSecret)
         {
-            var email = TempData["GoogleEmail"]?.ToString() ?? TempData.Peek("GoogleEmail")?.ToString();
-            var name = TempData["GoogleName"]?.ToString() ?? TempData.Peek("GoogleName")?.ToString();
+            // Read from query string parameters first, fallback to TempData
+            email ??= TempData["GoogleEmail"]?.ToString() ?? TempData.Peek("GoogleEmail")?.ToString();
+            name ??= TempData["GoogleName"]?.ToString() ?? TempData.Peek("GoogleName")?.ToString();
+            userId ??= TempData["GoogleUserId"]?.ToString() ?? TempData.Peek("GoogleUserId")?.ToString();
+            sessionSecret ??= TempData["GoogleSessionSecret"]?.ToString() ?? TempData.Peek("GoogleSessionSecret")?.ToString();
             
             if (string.IsNullOrEmpty(email))
             {
@@ -489,13 +542,16 @@ namespace DrawSync.Controllers
             var model = new CompleteGoogleSignupViewModel
             {
                 Email = email,
-                Name = name
+                Name = name,
+                UserId = userId,
+                SessionSecret = sessionSecret
             };
 
-            TempData.Keep("GoogleUserId");
-            TempData.Keep("GoogleName");
-            TempData.Keep("GoogleEmail");
-            TempData.Keep("GoogleSessionSecret");
+            // Set TempData for fallback compatibility
+            TempData["GoogleUserId"] = userId;
+            TempData["GoogleName"] = name;
+            TempData["GoogleEmail"] = email;
+            TempData["GoogleSessionSecret"] = sessionSecret;
 
             return View(model);
         }
@@ -504,15 +560,56 @@ namespace DrawSync.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CompleteGoogleSignup(CompleteGoogleSignupViewModel model)
         {
-            var email = TempData["GoogleEmail"]?.ToString();
-            var name = TempData["GoogleName"]?.ToString();
-            var userId = TempData["GoogleUserId"]?.ToString();
-            var sessionSecret = TempData["GoogleSessionSecret"]?.ToString();
+            // Log form fields to server console and capture for display
+            var formFields = HttpContext.Request.Form.Select(f => $"{f.Key} = {f.Value}").ToList();
+            var debugInfo = $"[DEBUG] POST CompleteGoogleSignup incoming form: {string.Join(", ", formFields)}";
+            Console.WriteLine(debugInfo);
+
+            // Read from posted model values first, fallback to TempData
+            var email = model.Email ?? TempData["GoogleEmail"]?.ToString();
+            var name = model.Name ?? TempData["GoogleName"]?.ToString();
+            var userId = model.UserId ?? TempData["GoogleUserId"]?.ToString();
+            var sessionSecret = model.SessionSecret ?? TempData["GoogleSessionSecret"]?.ToString();
 
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(sessionSecret))
             {
-                TempData["LoginError"] = "Google session expired. Please sign in again.";
-                return RedirectToAction("Login");
+                return Content($@"
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Onboarding POST Diagnostic</title>
+                        <style>
+                            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; background: #121214; color: #e1e1e6; line-height: 1.6; }}
+                            .card {{ background: #202024; border: 1px solid #323238; padding: 30px; border-radius: 8px; max-width: 800px; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }}
+                            h2 {{ color: #FD366E; margin-top: 0; }}
+                            code {{ background: #121214; padding: 6px 10px; border-radius: 4px; color: #ff5e5e; font-family: monospace; display: block; word-break: break-all; margin-top: 8px; }}
+                            ul {{ padding-left: 20px; }}
+                            li {{ margin-bottom: 8px; font-family: monospace; color: #e1e1e6; }}
+                            .btn {{ display: inline-block; background: #FD366E; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold; margin-top: 20px; }}
+                            .btn:hover {{ background: #e02f60; }}
+                        </style>
+                    </head>
+                    <body>
+                        <div class='card'>
+                            <h2>[Diagnostic] POST CompleteGoogleSignup Handler</h2>
+                            <p>The server received the onboarding form submission, but the required Appwrite session details were missing from the request.</p>
+                            <hr style='border: 0; border-top: 1px solid #323238; margin: 20px 0;' />
+                            <p><strong>Values Extracted by Backend:</strong></p>
+                            <ul>
+                                <li><strong>Email:</strong> {(string.IsNullOrEmpty(email) ? "null/empty" : email)}</li>
+                                <li><strong>UserId:</strong> {(string.IsNullOrEmpty(userId) ? "null/empty" : userId)}</li>
+                                <li><strong>SessionSecret:</strong> {(string.IsNullOrEmpty(sessionSecret) ? "null/empty" : "Present (hidden)")}</li>
+                            </ul>
+                            <p><strong>Raw Form Data POSTed by Browser ({formFields.Count}):</strong></p>
+                            <ul>
+                                {(formFields.Count == 0 ? "<li>(No form data detected in the request)</li>" : string.Join("", formFields.Select(f => $"<li>{f}</li>")))}
+                            </ul>
+                            <p style='color: #888; font-size: 0.9rem; margin-top: 20px;'>This screen is paused so you can inspect the raw post details.</p>
+                            <a href='/Auth/Login' class='btn'>Back to Login</a>
+                        </div>
+                    </body>
+                    </html>
+                ", "text/html");
             }
 
             if (!ModelState.IsValid)

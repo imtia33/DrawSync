@@ -15,6 +15,11 @@
             @Html.AntiForgeryToken()
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
+            <input type="hidden" asp-for="Email" />
+            <input type="hidden" asp-for="Name" />
+            <input type="hidden" asp-for="UserId" />
+            <input type="hidden" asp-for="SessionSecret" />
+
             <div class="form-group">
                 <label class="form-label">Google Profile Name</label>
                 <input class="form-control-custom" value="@Model.Name" readonly disabled style="opacity: 0.7; cursor: not-allowed; background: var(--secondary);" />
