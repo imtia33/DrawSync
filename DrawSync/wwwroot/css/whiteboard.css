@@ -144,6 +144,12 @@ body.whiteboard-page footer {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+.tool-btn[data-tool="neon"].active {
+  color: #ff007f;
+  box-shadow: 0 0 12px rgba(255, 0, 127, 0.5);
+  background: rgba(255, 0, 127, 0.08) !important;
+}
+
 .header-right {
   display: flex;
   align-items: center;
@@ -513,6 +519,53 @@ body.whiteboard-page footer {
   font-size: 0.8rem;
 }
 
+.picker-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#savePicker {
+  background: rgba(16, 185, 129, 0.08) !important;
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1010;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0;
+  outline: none;
+}
+
+#savePicker:hover {
+  transform: scale(1.12);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  border-color: transparent;
+}
+
+#savePicker:hover i {
+  color: white !important;
+}
+
+#savePicker:active {
+  transform: scale(0.9);
+}
+
+#savePicker i {
+  color: #10b981 !important; /* Vibrant green check mark */
+  font-size: 0.85rem;
+  font-weight: 900 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s;
+}
+
 #closePicker {
   background: rgba(239, 68, 68, 0.08) !important;
   border: 1px solid rgba(239, 68, 68, 0.15);
@@ -832,4 +885,18 @@ body.whiteboard-page footer {
   white-space: pre;
   outline: none !important;
   pointer-events: auto;
+}
+
+/* Map Custom Location popup styled elements */
+.location-icon {
+  color: #3b82f6 !important;
+}
+
+.confirm-btn.primary-btn {
+  background: #3b82f6 !important;
+  color: white !important;
+}
+
+.confirm-btn.primary-btn:hover {
+  background: #2563eb !important;
 }

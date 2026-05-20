@@ -59,6 +59,7 @@
             <div class="tool-group">
                 <button class="tool-btn active" data-tool="select" title="Selection (V)"><i class="bi bi-cursor-fill"></i></button>
                 <button class="tool-btn" data-tool="pencil" title="Pencil (P)"><i class="bi bi-pencil-fill"></i></button>
+                <button class="tool-btn" data-tool="neon" title="Neon Brush (N)"><i class="bi bi-magic"></i></button>
                 <button class="tool-btn" data-tool="eraser" title="Eraser (E)"><i class="bi bi-eraser-fill"></i></button>
                 <button class="tool-btn" data-tool="text" title="Text (T)"><i class="bi bi-type"></i></button>
                 <button class="tool-btn" data-tool="pan" title="Pan (Space)"><i class="bi bi-hand-index-thumb"></i></button>
@@ -145,6 +146,13 @@
                     </div>
                     <input type="range" id="opacity" min="1" max="100" value="100">
                 </div>
+                <div class="setting-item neon-only-setting" style="display: none;">
+                    <div class="setting-header">
+                        <span>Glow Intensity</span>
+                        <span id="glowVal">15px</span>
+                    </div>
+                    <input type="range" id="glowIntensity" min="5" max="40" value="15">
+                </div>
             </section>
 
             <section class="sidebar-section">
@@ -221,7 +229,10 @@
     <div id="colorPickerPanel" class="popover-picker whiteboard-only" style="display: none;">
         <div class="picker-header">
             <span id="pickerTitle">Stroke Color</span>
-            <button id="closePicker" title="Close Panel"><i class="bi bi-x-lg"></i></button>
+            <div class="picker-header-actions">
+                <button id="savePicker" title="Save & Apply"><i class="bi bi-check-lg"></i></button>
+                <button id="closePicker" title="Close Panel"><i class="bi bi-x-lg"></i></button>
+            </div>
         </div>
         <div class="picker-body">
             <div class="wheel-box">
@@ -254,6 +265,22 @@
             <div class="modal-btns">
                 <button id="cancelClear" class="cancel-btn">Cancel</button>
                 <button id="confirmClear" class="confirm-btn">Clear Everything</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Location Modal (Map Only) -->
+    <div id="locationModal" class="custom-modal map-only" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-icon location-icon"><i class="bi bi-geo-alt-fill"></i></div>
+            <h2>Name this Location</h2>
+            <p>Enter a label or title for your marker location.</p>
+            <div class="form-input-group" style="width: 100%; margin-bottom: 24px; text-align: left;">
+                <input type="text" id="locationNameInput" placeholder="E.g. Construction Area A" required autofocus style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--input-bg, #ffffff); color: var(--text-main, #111827); outline: none;">
+            </div>
+            <div class="modal-btns">
+                <button id="cancelLocation" class="cancel-btn">Cancel</button>
+                <button id="confirmLocation" class="confirm-btn primary-btn">Save Location</button>
             </div>
         </div>
     </div>

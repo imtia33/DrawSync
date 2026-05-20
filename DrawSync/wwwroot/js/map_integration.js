@@ -71,12 +71,53 @@ class MapBoard {
         this.map.on('mousemove', (e) => this.handleMouseMove(e));
         
         window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') this.cancelDrawing();
+            if (e.key === 'Escape') {
+                this.cancelDrawing();
+                const locModal = document.getElementById("locationModal");
+                if (locModal) {
+                    locModal.style.display = "none";
+                    this.pendingMarkerLatLng = null;
+                }
+            }
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
                 e.preventDefault();
                 this.undo();
             }
         });
+
+        // Setup Custom Location Modal Actions
+        const locModal = document.getElementById("locationModal");
+        const locInput = document.getElementById("locationNameInput");
+        const locConfirm = document.getElementById("confirmLocation");
+        const locCancel = document.getElementById("cancelLocation");
+
+        if (locConfirm && locCancel) {
+            locConfirm.onclick = () => {
+                const name = locInput.value.trim();
+                if (name && this.pendingMarkerLatLng) {
+                    this.addMarker(this.pendingMarkerLatLng.lat, this.pendingMarkerLatLng.lng, name);
+                    this.saveMapData();
+                }
+                if (locModal) locModal.style.display = "none";
+                this.pendingMarkerLatLng = null;
+            };
+
+            locCancel.onclick = () => {
+                if (locModal) locModal.style.display = "none";
+                this.pendingMarkerLatLng = null;
+            };
+
+            locInput.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    locConfirm.click();
+                }
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    locCancel.click();
+                }
+            };
+        }
     }
 
     setTool(tool) {
@@ -95,10 +136,13 @@ class MapBoard {
         const latlng = e.latlng;
 
         if (this.currentTool === 'marker') {
-            const name = prompt("Enter marker name:");
-            if (name) {
-                this.addMarker(latlng.lat, latlng.lng, name);
-                this.saveMapData();
+            this.pendingMarkerLatLng = latlng;
+            const modal = document.getElementById("locationModal");
+            const input = document.getElementById("locationNameInput");
+            if (modal && input) {
+                input.value = "";
+                modal.style.display = "flex";
+                setTimeout(() => input.focus(), 50);
             }
         } 
         else if (this.currentTool === 'line' || this.currentTool === 'arrow') {

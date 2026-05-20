@@ -19,6 +19,9 @@ class Element {
     this.endX = x;
     this.endY = y;
 
+    // Neon Specific Styles
+    this.glowIntensity = style.glowIntensity !== undefined ? style.glowIntensity : 15;
+
     // Text Specific Styles
     this.text = style.text || "";
     this.fontFamily = style.fontFamily || "sans-serif";
@@ -29,7 +32,7 @@ class Element {
   }
 
   getBounds() {
-    if (this.type === "pencil") {
+    if (this.type === "pencil" || this.type === "neon") {
       if (this.points.length === 0)
         return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
       const xs = this.points.map((p) => p.x);
@@ -73,7 +76,7 @@ class Element {
       return true;
     }
 
-    if (this.type === "pencil") {
+    if (this.type === "pencil" || this.type === "neon") {
       return this.points.some(
         (p) => Math.sqrt((p.x - x) ** 2 + (p.y - y) ** 2) < padding,
       );
@@ -116,7 +119,7 @@ class Element {
     return this.intersects(x, y, 2);
   }
 
-  draw(ctx) {
+  draw(ctx, isDarkBg = false) {
     ctx.save();
     ctx.globalAlpha = this.opacity / 100;
     ctx.strokeStyle = this.strokeColor;
@@ -131,6 +134,9 @@ class Element {
     switch (this.type) {
       case "pencil":
         this.drawPencil(ctx);
+        break;
+      case "neon":
+        this.drawNeon(ctx, isDarkBg);
         break;
       case "rectangle":
         ctx.beginPath();
@@ -163,10 +169,7 @@ class Element {
         ctx.stroke();
         break;
       case "line":
-        ctx.beginPath();
-        ctx.moveTo(this.x, this.y);
-        ctx.lineTo(this.endX, this.endY);
-        ctx.stroke();
+        this.drawLine(ctx);
         break;
       case "arrow":
         this.drawArrow(ctx);
@@ -178,7 +181,7 @@ class Element {
     ctx.restore();
   }
 
-  drawPencil(ctx) {
+  drawPath(ctx) {
     if (this.points.length < 2) return;
     ctx.beginPath();
     ctx.moveTo(this.points[0].x, this.points[0].y);
@@ -198,25 +201,258 @@ class Element {
     ctx.stroke();
   }
 
+  drawPencil(ctx) {
+    const hasFill = this.fillColor && this.fillColor !== "transparent";
+    const hasStroke = this.strokeColor && this.strokeColor !== "transparent";
+    if (hasFill) {
+      // Pass 1: Draw the border/outline in strokeColor (only if strokeColor is set and not transparent)
+      if (hasStroke) {
+        ctx.save();
+        ctx.strokeStyle = this.strokeColor;
+        ctx.lineWidth = this.strokeWidth + 2.5; // Slightly thicker border
+        this.drawPath(ctx);
+        ctx.restore();
+      }
+
+      // Pass 2: Draw the main center line in fillColor
+      ctx.save();
+      ctx.strokeStyle = this.fillColor;
+      ctx.lineWidth = this.strokeWidth;
+      this.drawPath(ctx);
+      ctx.restore();
+    } else {
+      // Normal single stroke in strokeColor
+      this.drawPath(ctx);
+    }
+  }
+
+  drawNeon(ctx, isDarkBg) {
+    if (this.points.length < 2) return;
+
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.setLineDash([]); // Neon strokes are always solid
+
+    const hasFill = this.fillColor && this.fillColor !== "transparent";
+    const hasStroke = this.strokeColor && this.strokeColor !== "transparent";
+    const mainColor = hasFill ? this.fillColor : this.strokeColor;
+    const colors = this.getNeonColors(mainColor, isDarkBg);
+    const blurAmount = this.glowIntensity || 15;
+
+    // Pass 1: Outer soft deep glow (using mainColor)
+    ctx.shadowColor = colors.glow;
+    ctx.shadowBlur = blurAmount * 1.5;
+    ctx.strokeStyle = colors.glow;
+    ctx.lineWidth = this.strokeWidth + 12;
+    ctx.globalAlpha = (this.opacity / 100) * 0.2;
+    this.drawPath(ctx);
+
+    // Pass 2: Main vibrant glow (using mainColor)
+    ctx.shadowColor = colors.glow;
+    ctx.shadowBlur = blurAmount;
+    ctx.strokeStyle = colors.glow;
+    ctx.lineWidth = this.strokeWidth + 4;
+    ctx.globalAlpha = (this.opacity / 100) * 0.5;
+    this.drawPath(ctx);
+
+    // Pass 3: Solid border stroke (if fillColor and strokeColor are set, drawn underneath the main line and core)
+    if (hasFill && hasStroke) {
+      ctx.shadowColor = "transparent";
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = this.strokeColor;
+      ctx.lineWidth = this.strokeWidth + 2.5; // Slightly thicker border outline
+      ctx.globalAlpha = this.opacity / 100;
+      this.drawPath(ctx);
+    }
+
+    // Pass 4: Solid main tube (if fillColor is set, drawn on top of the border and underneath the core)
+    if (hasFill) {
+      ctx.shadowColor = "transparent";
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = this.fillColor;
+      ctx.lineWidth = this.strokeWidth;
+      ctx.globalAlpha = this.opacity / 100;
+      this.drawPath(ctx);
+    }
+
+    // Pass 5: Bright, crisp center tube core (using core color)
+    ctx.shadowColor = colors.glow;
+    ctx.shadowBlur = blurAmount * 0.35;
+    ctx.strokeStyle = colors.core;
+    // Core sits beautifully inside the border/main line
+    ctx.lineWidth = hasFill ? Math.max(1.0, this.strokeWidth * 0.4) : Math.max(1.5, this.strokeWidth * 0.4);
+    ctx.globalAlpha = this.opacity / 100;
+    this.drawPath(ctx);
+
+    ctx.restore();
+  }
+
+  getNeonColors(hex, isDarkBg) {
+    if (!hex || hex === "transparent") {
+      return { core: "transparent", glow: "transparent" };
+    }
+
+    let r = 0, g = 0, b = 0;
+    if (hex.startsWith("#")) {
+      if (hex.length === 4) {
+        r = parseInt(hex[1] + hex[1], 16);
+        g = parseInt(hex[2] + hex[2], 16);
+        b = parseInt(hex[3] + hex[3], 16);
+      } else if (hex.length === 7) {
+        r = parseInt(hex.slice(1, 3), 16);
+        g = parseInt(hex.slice(3, 5), 16);
+        b = parseInt(hex.slice(5, 7), 16);
+      }
+    } else if (hex.startsWith("rgb")) {
+      const parts = hex.match(/\d+/g);
+      if (parts) {
+        r = parseInt(parts[0]);
+        g = parseInt(parts[1]);
+        b = parseInt(parts[2]);
+      }
+    } else {
+      return { core: isDarkBg ? "#ffffff" : hex, glow: hex };
+    }
+
+    let coreR, coreG, coreB;
+    if (isDarkBg) {
+      // Dark background: Core is bright pastel mixed with white (85% white, 15% color)
+      coreR = Math.round(r * 0.15 + 255 * 0.85);
+      coreG = Math.round(g * 0.15 + 255 * 0.85);
+      coreB = Math.round(b * 0.15 + 255 * 0.85);
+    } else {
+      // Light background: Core is richer color mixed with white (60% white, 40% color)
+      coreR = Math.round(r * 0.4 + 255 * 0.6);
+      coreG = Math.round(g * 0.4 + 255 * 0.6);
+      coreB = Math.round(b * 0.4 + 255 * 0.6);
+    }
+
+    const coreHex = "#" + [coreR, coreG, coreB].map(x => {
+      const clamped = Math.max(0, Math.min(255, x));
+      return clamped.toString(16).padStart(2, "0");
+    }).join("");
+
+    return { core: coreHex, glow: hex };
+  }
+
+  drawLine(ctx) {
+    const hasFill = this.fillColor && this.fillColor !== "transparent";
+    const hasStroke = this.strokeColor && this.strokeColor !== "transparent";
+    if (hasFill) {
+      // Pass 1: Draw the border outline in strokeColor
+      if (hasStroke) {
+        ctx.save();
+        ctx.strokeStyle = this.strokeColor;
+        ctx.lineWidth = this.strokeWidth + 2.5; // Slightly thicker border
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y);
+        ctx.lineTo(this.endX, this.endY);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Pass 2: Draw the main center line in fillColor
+      ctx.save();
+      ctx.strokeStyle = this.fillColor;
+      ctx.lineWidth = this.strokeWidth;
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+      ctx.lineTo(this.endX, this.endY);
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      // Normal single stroke line in strokeColor
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+      ctx.lineTo(this.endX, this.endY);
+      ctx.stroke();
+    }
+  }
+
   drawArrow(ctx) {
     const headlen = 10 * (this.strokeWidth / 2);
     const angle = Math.atan2(this.endY - this.y, this.endX - this.x);
-    ctx.beginPath();
-    ctx.moveTo(this.x, this.y);
-    ctx.lineTo(this.endX, this.endY);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(this.endX, this.endY);
-    ctx.lineTo(
-      this.endX - headlen * Math.cos(angle - Math.PI / 6),
-      this.endY - headlen * Math.sin(angle - Math.PI / 6),
-    );
-    ctx.moveTo(this.endX, this.endY);
-    ctx.lineTo(
-      this.endX - headlen * Math.cos(angle + Math.PI / 6),
-      this.endY - headlen * Math.sin(angle + Math.PI / 6),
-    );
-    ctx.stroke();
+    const hasFill = this.fillColor && this.fillColor !== "transparent";
+    const hasStroke = this.strokeColor && this.strokeColor !== "transparent";
+
+    if (hasFill) {
+      // Pass 1: Draw the border outline for BOTH shaft and head in strokeColor
+      if (hasStroke) {
+        ctx.save();
+        ctx.strokeStyle = this.strokeColor;
+        ctx.lineWidth = this.strokeWidth + 2.5;
+
+        // Draw shaft border
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y);
+        ctx.lineTo(this.endX, this.endY);
+        ctx.stroke();
+
+        // Draw arrowhead border
+        ctx.beginPath();
+        ctx.moveTo(this.endX, this.endY);
+        const p1X = this.endX - headlen * Math.cos(angle - Math.PI / 6);
+        const p1Y = this.endY - headlen * Math.sin(angle - Math.PI / 6);
+        const p2X = this.endX - headlen * Math.cos(angle + Math.PI / 6);
+        const p2Y = this.endY - headlen * Math.sin(angle + Math.PI / 6);
+        ctx.lineTo(p1X, p1Y);
+        ctx.lineTo(p2X, p2Y);
+        ctx.closePath();
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      // Pass 2: Draw the main center shaft and fill/outline arrowhead in fillColor
+      ctx.save();
+      ctx.strokeStyle = this.fillColor;
+      ctx.fillStyle = this.fillColor;
+      ctx.lineWidth = this.strokeWidth;
+
+      // Draw main shaft
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+      ctx.lineTo(this.endX, this.endY);
+      ctx.stroke();
+
+      // Draw and fill arrowhead
+      ctx.beginPath();
+      ctx.moveTo(this.endX, this.endY);
+      const p1X = this.endX - headlen * Math.cos(angle - Math.PI / 6);
+      const p1Y = this.endY - headlen * Math.sin(angle - Math.PI / 6);
+      const p2X = this.endX - headlen * Math.cos(angle + Math.PI / 6);
+      const p2Y = this.endY - headlen * Math.sin(angle + Math.PI / 6);
+      ctx.lineTo(p1X, p1Y);
+      ctx.lineTo(p2X, p2Y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.restore();
+    } else {
+      // Normal single stroke arrow (no fill)
+      // Draw main shaft
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+      ctx.lineTo(this.endX, this.endY);
+      ctx.stroke();
+
+      // Draw arrowhead
+      ctx.beginPath();
+      ctx.moveTo(this.endX, this.endY);
+      const p1X = this.endX - headlen * Math.cos(angle - Math.PI / 6);
+      const p1Y = this.endY - headlen * Math.sin(angle - Math.PI / 6);
+      const p2X = this.endX - headlen * Math.cos(angle + Math.PI / 6);
+      const p2Y = this.endY - headlen * Math.sin(angle + Math.PI / 6);
+      ctx.lineTo(p1X, p1Y);
+      ctx.lineTo(p2X, p2Y);
+      ctx.closePath();
+
+      ctx.fillStyle = this.strokeColor;
+      ctx.fill();
+      ctx.stroke();
+    }
   }
 
   drawText(ctx) {
@@ -232,15 +468,16 @@ class Element {
     const lines = this.text.split("\n");
     const lineHeight = this.fontSize * 1.2;
 
+    const isTransparentFill = !this.fillColor || this.fillColor === "transparent";
+    ctx.fillStyle = isTransparentFill ? this.strokeColor : this.fillColor;
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const lineY = this.y + i * lineHeight;
 
-      if (this.fillColor !== "transparent") {
-        ctx.fillText(line, this.x, lineY);
-      }
+      ctx.fillText(line, this.x, lineY);
 
-      if (this.strokeColor !== "transparent" && this.strokeWidth > 0) {
+      if (!isTransparentFill && this.strokeColor && this.strokeColor !== "transparent" && this.strokeWidth > 0) {
         ctx.strokeText(line, this.x, lineY);
       }
 
@@ -251,7 +488,7 @@ class Element {
         ctx.moveTo(this.x, underlineY);
         ctx.lineTo(this.x + textWidth, underlineY);
         ctx.lineWidth = Math.max(1, this.fontSize / 15);
-        ctx.strokeStyle = this.fillColor !== "transparent" ? this.fillColor : this.strokeColor;
+        ctx.strokeStyle = isTransparentFill ? this.strokeColor : this.fillColor;
         ctx.stroke();
       }
     }
@@ -288,6 +525,7 @@ class Whiteboard {
       bold: false,
       italic: false,
       underline: false,
+      glowIntensity: 15,
     };
     this.isTyping = false;
     this.backgroundColor = "#f8f9fa";
@@ -361,6 +599,11 @@ class Whiteboard {
       document.getElementById("opacityVal").textContent = val + "%";
       this.updateSelectedStyle("opacity", val);
     };
+    document.getElementById("glowIntensity").oninput = (e) => {
+      const val = parseInt(e.target.value);
+      document.getElementById("glowVal").textContent = val + "px";
+      this.updateSelectedStyle("glowIntensity", val);
+    };
     document.querySelectorAll("#strokeStyle .style-toggle").forEach((btn) => {
       btn.onclick = () => {
         document
@@ -376,8 +619,20 @@ class Whiteboard {
     document.getElementById("fillSwatchBtn").onclick = (e) =>
       this.openColorPicker("fill", e);
 
-    document.getElementById("closePicker").onclick = () =>
-      (document.getElementById("colorPickerPanel").style.display = "none");
+    document.getElementById("savePicker").onclick = () => {
+      const key = this.cpTarget === "stroke" ? "strokeColor" : "fillColor";
+      this.updateSelectedStyle(key, this.stagedColor);
+
+      const swatch = document.getElementById(this.cpTarget + "Swatch");
+      swatch.style.backgroundColor = this.stagedColor;
+      swatch.classList.toggle("is-transparent", this.stagedColor === "transparent");
+
+      document.getElementById("colorPickerPanel").style.display = "none";
+    };
+
+    document.getElementById("closePicker").onclick = () => {
+      document.getElementById("colorPickerPanel").style.display = "none";
+    };
 
     window.onkeydown = (e) => this.onKeyDown(e);
     window.onkeyup = (e) => {
@@ -470,6 +725,7 @@ class Whiteboard {
       .querySelectorAll(".tool-btn")
       .forEach((b) => b.classList.toggle("active", b.dataset.tool === tool));
     this.updateTextSettingsVisibility();
+    this.updateNeonSettingsVisibility();
     this.render();
   }
 
@@ -556,7 +812,13 @@ class Whiteboard {
         const x = me.clientX - rect.left - 115;
         const y = me.clientY - rect.top - 115;
         const angle = ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+        document.getElementById("svCursor").style.display = "block";
         updateSV(angle);
+        const cursorLeft = parseFloat(document.getElementById("svCursor").style.left) - 45 || 0;
+        const cursorTop = parseFloat(document.getElementById("svCursor").style.top) - 45 || 0;
+        const s = (cursorLeft / 139) * 100;
+        const v = (1 - cursorTop / 139) * 100;
+        this.updateColorPickerUI(this.hsvToHex(angle, s, v));
       };
       const onMove = (me) => pick(me);
       const onUp = () => {
@@ -587,10 +849,18 @@ class Whiteboard {
       window.addEventListener("mouseup", onUp);
       pick(e);
     };
-    document.getElementById("noFillBtn").onclick = () =>
+    document.getElementById("noFillBtn").onclick = () => {
       this.updateColorPickerUI("transparent");
-    document.getElementById("hexInput").onchange = (e) =>
-      this.updateColorPickerUI(e.target.value);
+      document.getElementById("svCursor").style.display = "none";
+    };
+    document.getElementById("hexInput").onchange = (e) => {
+      let color = e.target.value;
+      if (color !== "transparent" && !color.startsWith("#")) {
+        color = "#" + color;
+      }
+      this.updateColorPickerUI(color);
+      this.initCursorPositionsForColor(color);
+    };
   }
 
   hsvToHex(h, s, v) {
@@ -606,15 +876,79 @@ class Whiteboard {
     return `#${rgb.join("")}`;
   }
 
-  updateColorPickerUI(color) {
-    document.getElementById("hexInput").value = color;
-    document.getElementById("colorPreview").style.backgroundColor = color;
-    const key = this.cpTarget === "stroke" ? "strokeColor" : "fillColor";
-    this.updateSelectedStyle(key, color);
+  hexToHsv(hex) {
+    if (!hex || hex === "transparent" || !hex.startsWith("#")) {
+      return { h: 0, s: 0, v: 0 };
+    }
+    let r = 0, g = 0, b = 0;
+    if (hex.length === 4) {
+      r = parseInt(hex[1] + hex[1], 16) / 255;
+      g = parseInt(hex[2] + hex[2], 16) / 255;
+      b = parseInt(hex[3] + hex[3], 16) / 255;
+    } else if (hex.length === 7) {
+      r = parseInt(hex.slice(1, 3), 16) / 255;
+      g = parseInt(hex.slice(3, 5), 16) / 255;
+      b = parseInt(hex.slice(5, 7), 16) / 255;
+    }
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, v = max;
+    const d = max - min;
+    s = max === 0 ? 0 : d / max;
+    if (max === min) {
+      h = 0;
+    } else {
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      h /= 6;
+    }
+    return { h: h * 360, s: s * 100, v: v * 100 };
+  }
 
-    const swatch = document.getElementById(this.cpTarget + "Swatch");
-    swatch.style.backgroundColor = color;
-    swatch.classList.toggle("is-transparent", color === "transparent");
+  initCursorPositionsForColor(color) {
+    if (color === "transparent") {
+      document.getElementById("svCursor").style.display = "none";
+      return;
+    }
+    document.getElementById("svCursor").style.display = "block";
+    const hsv = this.hexToHsv(color);
+    this.currentHue = hsv.h;
+
+    const sv = document.getElementById("svSquare");
+    const sCtx = sv.getContext("2d");
+    sCtx.clearRect(0, 0, 140, 140);
+    sCtx.fillStyle = `hsl(${hsv.h}, 100%, 50%)`;
+    sCtx.fillRect(0, 0, 140, 140);
+    let gradW = sCtx.createLinearGradient(0, 0, 140, 0);
+    gradW.addColorStop(0, "white");
+    gradW.addColorStop(1, "rgba(255,255,255,0)");
+    sCtx.fillStyle = gradW;
+    sCtx.fillRect(0, 0, 140, 140);
+    let gradB = sCtx.createLinearGradient(0, 0, 0, 140);
+    gradB.addColorStop(0, "rgba(0,0,0,0)");
+    gradB.addColorStop(1, "black");
+    sCtx.fillStyle = gradB;
+    sCtx.fillRect(0, 0, 140, 140);
+
+    const x = (hsv.s / 100) * 139;
+    const y = (1 - hsv.v / 100) * 139;
+    document.getElementById("svCursor").style.left = x + 45 + "px";
+    document.getElementById("svCursor").style.top = y + 45 + "px";
+  }
+
+  updateColorPickerUI(color) {
+    this.stagedColor = color;
+    document.getElementById("hexInput").value = color;
+    const preview = document.getElementById("colorPreview");
+    if (color === "transparent") {
+      preview.style.backgroundColor = "";
+      preview.classList.add("is-transparent");
+    } else {
+      preview.style.backgroundColor = color;
+      preview.classList.remove("is-transparent");
+    }
   }
 
   openColorPicker(target, e) {
@@ -626,6 +960,21 @@ class Whiteboard {
     panel.style.top = Math.max(70, e.clientY - 100) + "px";
     document.getElementById("pickerTitle").textContent =
       target === "stroke" ? "Stroke Color" : "Fill Color";
+
+    this.originalColor = target === "stroke" ? this.style.strokeColor : this.style.fillColor;
+    this.stagedColor = this.originalColor;
+
+    document.getElementById("hexInput").value = this.originalColor;
+    const preview = document.getElementById("colorPreview");
+    if (this.originalColor === "transparent") {
+      preview.style.backgroundColor = "";
+      preview.classList.add("is-transparent");
+    } else {
+      preview.style.backgroundColor = this.originalColor;
+      preview.classList.remove("is-transparent");
+    }
+
+    this.initCursorPositionsForColor(this.originalColor);
   }
 
   updateSelectedStyle(key, val) {
@@ -680,18 +1029,22 @@ class Whiteboard {
         if (clicked.type === "text") {
           this.syncTextSettingsUI(clicked);
         }
+        if (clicked.type === "neon") {
+          this.syncNeonSettingsUI(clicked);
+        }
         this.isMoving = true;
       } else {
         this.selectedElements = [];
       }
       this.updateTextSettingsVisibility();
+      this.updateNeonSettingsVisibility();
       this.render();
       return;
     }
     this.isDrawing = true;
     const tool = this.currentTool;
     this.currentElement = new Element(tool, worldPos.x, worldPos.y, this.style);
-    if (tool === "pencil") this.currentElement.points.push(worldPos);
+    if (tool === "pencil" || tool === "neon") this.currentElement.points.push(worldPos);
   }
 
   onMouseMove(e) {
@@ -702,7 +1055,7 @@ class Whiteboard {
     cursor.style.left = clientX + "px";
     cursor.style.top = clientY + "px";
     const size =
-      this.currentTool === "pencil" || this.currentTool === "eraser"
+      this.currentTool === "pencil" || this.currentTool === "neon" || this.currentTool === "eraser"
         ? this.style.strokeWidth * this.camera.zoom
         : 20;
     cursor.style.width = size + "px";
@@ -755,7 +1108,7 @@ class Whiteboard {
       this.selectedElements.forEach((el) => {
         el.x += dx;
         el.y += dy;
-        if (el.type === "pencil")
+        if (el.type === "pencil" || el.type === "neon")
           el.points.forEach((p) => {
             p.x += dx;
             p.y += dy;
@@ -792,7 +1145,7 @@ class Whiteboard {
       }
     }
     if (!this.isDrawing || !this.currentElement) return;
-    if (this.currentElement.type === "pencil") {
+    if (this.currentElement.type === "pencil" || this.currentElement.type === "neon") {
       this.currentElement.points.push(worldPos);
     } else {
       let dx = worldPos.x - this.currentElement.x;
@@ -852,7 +1205,7 @@ class Whiteboard {
     for (const el of this.elements) {
       if (el.intersects(worldPos.x, worldPos.y, radius)) {
         changed = true;
-        if (el.type === "pencil") {
+        if (el.type === "pencil" || el.type === "neon") {
           const segments = [];
           let currentSegment = [];
           for (const p of el.points) {
@@ -872,12 +1225,13 @@ class Whiteboard {
 
           for (const seg of segments) {
             if (seg.length >= 2) {
-              const newEl = new Element("pencil", seg[0].x, seg[0].y, el);
+              const newEl = new Element(el.type, seg[0].x, seg[0].y, el);
               newEl.points = seg;
               newEl.strokeColor = el.strokeColor;
               newEl.strokeWidth = el.strokeWidth;
               newEl.strokeStyle = el.strokeStyle;
               newEl.opacity = el.opacity;
+              newEl.glowIntensity = el.glowIntensity; // preserve glowIntensity
               newElements.push(newEl);
             }
           }
@@ -980,6 +1334,7 @@ class Whiteboard {
     const tools = {
       v: "select",
       p: "pencil",
+      n: "neon",
       e: "eraser",
       h: "pan",
       r: "rectangle",
@@ -1007,10 +1362,12 @@ class Whiteboard {
     this.ctx.translate(this.camera.x, this.camera.y);
     this.ctx.scale(this.camera.zoom, this.camera.zoom);
 
+    const isDark = this.isColorDark(this.backgroundColor);
+
     // Draw non-text shape elements first
     this.elements.forEach((el) => {
       if (el.type !== "text") {
-        el.draw(this.ctx);
+        el.draw(this.ctx, isDark);
         if (this.selectedElements.includes(el)) this.drawSelection(el);
       }
     });
@@ -1018,12 +1375,12 @@ class Whiteboard {
     // Draw text elements on top so text overlays shapes
     this.elements.forEach((el) => {
       if (el.type === "text") {
-        el.draw(this.ctx);
+        el.draw(this.ctx, isDark);
         if (this.selectedElements.includes(el)) this.drawSelection(el);
       }
     });
 
-    if (this.currentElement) this.currentElement.draw(this.ctx);
+    if (this.currentElement) this.currentElement.draw(this.ctx, isDark);
     this.ctx.restore();
   }
 
@@ -1152,6 +1509,30 @@ class Whiteboard {
     document.getElementById("btnBold").classList.toggle("active", el.bold);
     document.getElementById("btnItalic").classList.toggle("active", el.italic);
     document.getElementById("btnUnderline").classList.toggle("active", el.underline);
+  }
+
+  updateNeonSettingsVisibility() {
+    const neonSettings = document.querySelectorAll(".neon-only-setting");
+    const hasNeonSelected = this.selectedElements.some((el) => el.type === "neon");
+    const isNeonActive = this.currentTool === "neon" || hasNeonSelected;
+
+    neonSettings.forEach((el) => {
+      el.style.display = isNeonActive ? "block" : "none";
+    });
+
+    if (hasNeonSelected) {
+      const selectedNeon = this.selectedElements.find((el) => el.type === "neon");
+      if (selectedNeon) {
+        this.syncNeonSettingsUI(selectedNeon);
+      }
+    }
+  }
+
+  syncNeonSettingsUI(el) {
+    if (el.type !== "neon") return;
+    const intensity = el.glowIntensity !== undefined ? el.glowIntensity : 15;
+    document.getElementById("glowIntensity").value = intensity;
+    document.getElementById("glowVal").textContent = intensity + "px";
   }
 
   updateSelectedTextStyle(key, val) {
