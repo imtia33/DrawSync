@@ -14,7 +14,8 @@ class MapBoard {
             markers: [],
             lines: [],
             arrows: [],
-            polygons: []
+            polygons: [],
+            paths: [] // For measurement ruler
         };
 
         // Undo stack
@@ -23,7 +24,14 @@ class MapBoard {
         // Active drawing state
         this.activeDrawing = {
             points: [],
-            tempLayer: null
+            tempLayer: null,
+            tempLabel: null // Dynamic measurement tooltip
+        };
+
+        // Edit Mode state
+        this.editMode = {
+            active: false,
+            vertexMarkers: [] // Draggable handles
         };
 
         this.init();
@@ -52,13 +60,12 @@ class MapBoard {
         // Link Undo button in Board.cshtml
         const undoBtn = document.getElementById("undoBtn");
         if (undoBtn) {
-            undoBtn.classList.remove('whiteboard-only'); // Enable for map
+            undoBtn.classList.remove('whiteboard-only');
             undoBtn.onclick = () => this.undo();
         }
     }
 
     setupMapControls() {
-        // Tool buttons
         document.querySelectorAll('.map-tool-btn').forEach(btn => {
             btn.onclick = () => {
                 document.querySelectorAll('.map-tool-btn').forEach(b => b.classList.remove('active'));
@@ -69,6 +76,18 @@ class MapBoard {
 
         this.map.on('click', (e) => this.handleMapClick(e));
         this.map.on('mousemove', (e) => this.handleMouseMove(e));
+        // Right-click to finish paths or polygons
+        this.map.on('contextmenu', (e) => {
+            if (this.currentTool === 'polygon' && this.activeDrawing.points.length > 2) {
+                this.addPolygon(this.activeDrawing.points);
+                this.saveMapData();
+                this.cancelDrawing();
+            } else if (this.currentTool === 'path' && this.activeDrawing.points.length > 1) {
+                this.addPath(this.activeDrawing.points);
+                this.saveMapData();
+                this.cancelDrawing();
+            }
+        });
         
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
@@ -85,7 +104,7 @@ class MapBoard {
             }
         });
 
-        // Setup Custom Location Modal Actions
+        // Setup Custom Location Modal
         const locModal = document.getElementById("locationModal");
         const locInput = document.getElementById("locationNameInput");
         const locConfirm = document.getElementById("confirmLocation");
@@ -108,24 +127,26 @@ class MapBoard {
             };
 
             locInput.onkeydown = (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    locConfirm.click();
-                }
-                if (e.key === 'Escape') {
-                    e.preventDefault();
-                    locCancel.click();
-                }
+                if (e.key === 'Enter') { e.preventDefault(); locConfirm.click(); }
+                if (e.key === 'Escape') { e.preventDefault(); locCancel.click(); }
             };
         }
     }
 
     setTool(tool) {
         this.cancelDrawing();
+        
+        // Toggle Edit Mode
+        if (tool === 'edit') {
+            this.enableEditMode();
+        } else if (this.currentTool === 'edit') {
+            this.disableEditMode();
+        }
+
         this.currentTool = tool;
-        if (tool === 'pan') {
+        if (tool === 'pan' || tool === 'edit') {
             this.map.dragging.enable();
-            document.getElementById(this.containerId).style.cursor = '';
+            document.getElementById(this.containerId).style.cursor = tool === 'edit' ? 'pointer' : '';
         } else {
             this.map.dragging.disable();
             document.getElementById(this.containerId).style.cursor = 'crosshair';
@@ -133,6 +154,8 @@ class MapBoard {
     }
 
     handleMapClick(e) {
+        if (this.currentTool === 'edit' || this.currentTool === 'pan') return;
+
         const latlng = e.latlng;
 
         if (this.currentTool === 'marker') {
@@ -154,16 +177,20 @@ class MapBoard {
                 if (this.currentTool === 'line') this.addLine(start, end);
                 else this.addArrow(start, end);
                 
-                this.cancelDrawing(); // Resets points but keeps tool active
+                this.cancelDrawing();
                 this.saveMapData();
             }
         }
-        else if (this.currentTool === 'polygon') {
+        else if (this.currentTool === 'polygon' || this.currentTool === 'path') {
             const lastPoint = this.activeDrawing.points[this.activeDrawing.points.length - 1];
             
+            // If clicking near the last point, finish drawing (double click logic)
             if (lastPoint && this.map.distance(latlng, L.latLng(lastPoint)) < 15) {
-                if (this.activeDrawing.points.length > 2) {
+                if (this.currentTool === 'polygon' && this.activeDrawing.points.length > 2) {
                     this.addPolygon(this.activeDrawing.points);
+                    this.saveMapData();
+                } else if (this.currentTool === 'path' && this.activeDrawing.points.length > 1) {
+                    this.addPath(this.activeDrawing.points);
                     this.saveMapData();
                 }
                 this.cancelDrawing();
@@ -190,10 +217,36 @@ class MapBoard {
 
         if (pts.length < 2) return;
 
-        if (this.currentTool === 'line' || this.currentTool === 'arrow') {
+        let labelText = "";
+        let labelPos = currentLatLng || L.latLng(pts[pts.length - 1]);
+
+        if (this.currentTool === 'line' || this.currentTool === 'arrow' || this.currentTool === 'path') {
             this.activeDrawing.tempLayer = L.polyline(pts, { color: '#3b82f6', dashArray: '5, 10', weight: 3 }).addTo(this.map);
+            const dist = window.MapGeometry.calculatePathLength(pts);
+            labelText = window.MapGeometry.formatDistance(dist);
+            
+            if (this.currentTool === 'line' || this.currentTool === 'arrow') {
+                labelPos = window.MapGeometry.getLineMidpoint(pts[0], pts[1]);
+            } else {
+                // For paths, show at cursor
+                labelPos = currentLatLng || L.latLng(pts[pts.length - 1]);
+            }
         } else if (this.currentTool === 'polygon') {
             this.activeDrawing.tempLayer = L.polygon(pts, { color: '#3b82f6', dashArray: '5, 10', fillOpacity: 0.2 }).addTo(this.map);
+            if (pts.length > 2) {
+                const area = window.MapGeometry.calculatePolygonArea(pts);
+                labelText = window.MapGeometry.formatArea(area);
+                labelPos = window.MapGeometry.getPolygonCenter(pts);
+            }
+        }
+
+        if (labelText) {
+            this.activeDrawing.tempLabel = window.MapLabels.updateDynamicTooltip(
+                this.map, 
+                this.activeDrawing.tempLabel, 
+                labelPos, 
+                labelText
+            );
         }
     }
 
@@ -201,81 +254,99 @@ class MapBoard {
         if (this.activeDrawing.tempLayer) {
             this.map.removeLayer(this.activeDrawing.tempLayer);
         }
+        if (this.activeDrawing.tempLabel) {
+            window.MapLabels.removeLabel(this.map, this.activeDrawing.tempLabel);
+        }
         this.activeDrawing.points = [];
         this.activeDrawing.tempLayer = null;
+        this.activeDrawing.tempLabel = null;
     }
 
-    addToHistory(type, data, layer) {
-        this.history.push({ type, data, layer });
-        this.features[type].push(data);
+    addToHistory(type, data, layers) {
+        // Find existing to replace (for edit mode)
+        const existingIdx = this.features[type].findIndex(d => d.id === data.id);
+        if (existingIdx > -1) {
+            this.features[type][existingIdx] = data;
+        } else {
+            this.features[type].push(data);
+        }
+        
+        // Push full state to history for undo (simplified deep copy)
+        this.history.push({
+            type,
+            data: JSON.parse(JSON.stringify(data)),
+            layers: Array.isArray(layers) ? layers : [layers]
+        });
     }
 
     undo() {
         if (this.history.length === 0) return;
         const last = this.history.pop();
         
-        // Remove from map
-        if (Array.isArray(last.layer)) {
-            last.layer.forEach(l => this.map.removeLayer(l));
-        } else {
-            this.map.removeLayer(last.layer);
-        }
+        // Remove layers from map
+        last.layers.forEach(l => this.map.removeLayer(l));
 
         // Remove from data structure
         const list = this.features[last.type];
-        const index = list.indexOf(last.data);
-        if (index > -1) list.splice(index, 1);
+        const index = list.findIndex(d => d.id === last.data.id);
+        if (index > -1) {
+            list.splice(index, 1);
+        }
+
+        // If edit mode active, refresh handlers
+        if (this.currentTool === 'edit') {
+            this.disableEditMode();
+            this.enableEditMode();
+        }
 
         this.saveMapData();
     }
 
-    addMarker(lat, lng, title) {
+    generateId() {
+        return Math.random().toString(36).substring(2, 9);
+    }
+
+    addMarker(lat, lng, title, id = this.generateId()) {
         const marker = L.marker([lat, lng]).addTo(this.map);
         marker.bindPopup(`<b>${title}</b>`);
-        const data = { lat, lng, title };
+        const data = { id, lat, lng, title };
+        
+        // Attach raw data reference
+        marker.drawData = { type: 'markers', data };
+
         this.addToHistory('markers', data, marker);
+        return { marker, data };
     }
 
-    addLine(start, end) {
+    addLine(start, end, id = this.generateId()) {
         const line = L.polyline([start, end], { color: '#2563eb', weight: 4 }).addTo(this.map);
-        const data = { start, end };
-        this.addToHistory('lines', data, line);
+        
+        const dist = window.MapGeometry.calculateDistance(start, end);
+        const mid = window.MapGeometry.getLineMidpoint(start, end);
+        const label = window.MapLabels.createLabel(this.map, mid, window.MapGeometry.formatDistance(dist));
+
+        const data = { id, start, end };
+        line.drawData = { type: 'lines', data, label };
+
+        this.addToHistory('lines', data, [line, label]);
+        return { line, label, data };
     }
 
-    addArrow(start, end) {
+    addArrow(start, end, id = this.generateId()) {
         const color = '#dc2626';
         const line = L.polyline([start, end], { color: color, weight: 4 }).addTo(this.map);
         
-        // Improved Arrowhead math
-        const headLengthPx = 20;
         const zoom = this.map.getZoom();
-        
-        // Calculate coordinate scale based on zoom
-        // Roughly: meters per pixel = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom)
-        const latScale = 1 / Math.pow(2, zoom - 1); // Approximation for lat/lng degree scale
-        const headLen = headLengthPx * latScale * 0.0001; 
-
-        const angle = Math.atan2(end[0] - start[0], end[1] - start[1]);
+        const latScale = 1 / Math.pow(2, zoom - 1);
+        const headLen = 20 * latScale * 0.0001; 
         const arrowAngle = Math.PI / 6;
 
-        const h1 = [
-            end[0] - headLen * Math.sin(angle - arrowAngle),
-            end[1] - headLen * Math.cos(angle - arrowAngle)
-        ];
-        const h2 = [
-            end[0] - headLen * Math.sin(angle + arrowAngle),
-            end[1] - headLen * Math.cos(angle + arrowAngle)
-        ];
-
-        // Wait, my sin/cos logic is still a bit weird because of lat/lng being [y, x]
-        // Let's use a simpler vector approach
         const dy = end[0] - start[0];
         const dx = end[1] - start[1];
         const len = Math.sqrt(dx*dx + dy*dy);
         const udx = dx / len;
         const udy = dy / len;
-        
-        const headSize = headLen * 1500; // Adjusted for degree scale
+        const headSize = headLen * 1500; 
         
         const p1 = [
             end[0] - headSize * (udy * Math.cos(arrowAngle) - udx * Math.sin(arrowAngle)),
@@ -289,82 +360,252 @@ class MapBoard {
         const head1 = L.polyline([end, p1], { color: color, weight: 4 }).addTo(this.map);
         const head2 = L.polyline([end, p2], { color: color, weight: 4 }).addTo(this.map);
         
-        const data = { start, end };
-        this.addToHistory('arrows', data, [line, head1, head2]);
-    }
+        const dist = window.MapGeometry.calculateDistance(start, end);
+        const mid = window.MapGeometry.getLineMidpoint(start, end);
+        const label = window.MapLabels.createLabel(this.map, mid, window.MapGeometry.formatDistance(dist), 'arrow-label');
 
-    addPolygon(points) {
-        const poly = L.polygon(points, { color: '#16a34a', fillColor: '#22c55e', fillOpacity: 0.3, weight: 3 }).addTo(this.map);
-        const data = { points };
-        this.addToHistory('polygons', data, poly);
-    }
-
-    async loadMapData() {
-        const data = await window.DrawStorage.getElements(this.boardId);
+        const data = { id, start, end };
         
-        // Handle both object format (new) and ensure it's not a whiteboard array
-        if (data && !Array.isArray(data)) {
-            this.features = { 
-                markers: data.markers || [], 
-                lines: data.lines || [], 
-                arrows: data.arrows || [], 
-                polygons: data.polygons || [] 
-            };
-            this.history = []; // History isn't persisted for now, but features are
-            
-            this.features.markers.forEach(m => this.renderMarker(m));
-            this.features.lines.forEach(l => this.renderLine(l));
-            this.features.arrows.forEach(a => this.renderArrow(a));
-            this.features.polygons.forEach(p => this.renderPolygon(p));
+        // Attach logic to master line
+        line.drawData = { type: 'arrows', data, subLayers: [head1, head2, label], label };
+
+        this.addToHistory('arrows', data, [line, head1, head2, label]);
+        return { line, data };
+    }
+
+    addPolygon(points, id = this.generateId()) {
+        const poly = L.polygon(points, { color: '#16a34a', fillColor: '#22c55e', fillOpacity: 0.3, weight: 3 }).addTo(this.map);
+        
+        const area = window.MapGeometry.calculatePolygonArea(points);
+        const center = window.MapGeometry.getPolygonCenter(points);
+        const label = window.MapLabels.createLabel(this.map, center, window.MapGeometry.formatArea(area), 'polygon-label');
+
+        const data = { id, points };
+        poly.drawData = { type: 'polygons', data, label };
+
+        this.addToHistory('polygons', data, [poly, label]);
+        return { poly, label, data };
+    }
+
+    addPath(points, id = this.generateId()) {
+        const path = L.polyline(points, { color: '#f59e0b', dashArray: '5, 10', weight: 4 }).addTo(this.map);
+        
+        const dist = window.MapGeometry.calculatePathLength(points);
+        const endPoint = points[points.length - 1];
+        const label = window.MapLabels.createLabel(this.map, endPoint, window.MapGeometry.formatDistance(dist), 'path-label');
+
+        const data = { id, points };
+        path.drawData = { type: 'paths', data, label };
+
+        this.addToHistory('paths', data, [path, label]);
+        return { path, label, data };
+    }
+
+    /* --- Edit Mode Implementation --- */
+    
+    enableEditMode() {
+        this.editMode.active = true;
+        this.editMode.vertexMarkers = [];
+        this.map.eachLayer(layer => {
+            if (layer.drawData) {
+                this.bindEditHandles(layer);
+            }
+        });
+    }
+
+    disableEditMode() {
+        this.editMode.active = false;
+        // Clean up vertex handles
+        this.editMode.vertexMarkers.forEach(m => this.map.removeLayer(m));
+        this.editMode.vertexMarkers = [];
+        
+        // Remove draggable from markers
+        this.map.eachLayer(layer => {
+            if (layer instanceof L.Marker && layer.drawData && layer.drawData.type === 'markers') {
+                layer.dragging.disable();
+            }
+        });
+    }
+
+    bindEditHandles(layer) {
+        const type = layer.drawData.type;
+        const data = layer.drawData.data;
+
+        if (type === 'markers') {
+            layer.dragging.enable();
+            layer.on('dragend', (e) => {
+                const pos = e.target.getLatLng();
+                data.lat = pos.lat;
+                data.lng = pos.lng;
+                this.saveMapData();
+            });
+        } 
+        else if (type === 'lines' || type === 'arrows') {
+            this.createVertexMarker(layer, 0, data.start, data, type);
+            this.createVertexMarker(layer, 1, data.end, data, type);
+        }
+        else if (type === 'polygons' || type === 'paths') {
+            data.points.forEach((pt, index) => {
+                this.createVertexMarker(layer, index, pt, data, type);
+            });
         }
     }
 
-    // Helper methods that only draw, without adding to features/history (used during load)
-    renderMarker(m) {
-        const marker = L.marker([m.lat, m.lng]).addTo(this.map);
-        marker.bindPopup(`<b>${m.title}</b>`);
-        return marker;
+    createVertexMarker(parentLayer, index, latlng, data, type) {
+        const icon = L.divIcon({
+            className: 'vertex-edit-handle',
+            iconSize: [12, 12]
+        });
+        const marker = L.marker(latlng, { icon: icon, draggable: true, zIndexOffset: 2000 }).addTo(this.map);
+        this.editMode.vertexMarkers.push(marker);
+
+        marker.on('drag', (e) => {
+            const pos = e.latlng;
+            const newPt = [pos.lat, pos.lng];
+
+            // Update data
+            if (type === 'lines' || type === 'arrows') {
+                if (index === 0) data.start = newPt;
+                else data.end = newPt;
+                parentLayer.setLatLngs([data.start, data.end]);
+                
+                // Recalculate label
+                const dist = window.MapGeometry.calculateDistance(data.start, data.end);
+                const mid = window.MapGeometry.getLineMidpoint(data.start, data.end);
+                window.MapLabels.updateLabel(parentLayer.drawData.label, mid, window.MapGeometry.formatDistance(dist));
+
+                // If arrow, redraw heads
+                if (type === 'arrows') {
+                    // Removing old heads and recreating arrow is complex during drag.
+                    // For performance, we can just let it be a line during drag and recreate on dragend,
+                    // or re-math it here. We'll rebuild the arrow heads smoothly.
+                    this.updateArrowHeads(parentLayer, data.start, data.end);
+                }
+
+            } else if (type === 'polygons' || type === 'paths') {
+                data.points[index] = newPt;
+                parentLayer.setLatLngs(data.points);
+                
+                if (type === 'polygons') {
+                    const area = window.MapGeometry.calculatePolygonArea(data.points);
+                    const center = window.MapGeometry.getPolygonCenter(data.points);
+                    window.MapLabels.updateLabel(parentLayer.drawData.label, center, window.MapGeometry.formatArea(area));
+                } else {
+                    const dist = window.MapGeometry.calculatePathLength(data.points);
+                    const endPt = data.points[data.points.length - 1];
+                    window.MapLabels.updateLabel(parentLayer.drawData.label, endPt, window.MapGeometry.formatDistance(dist));
+                }
+            }
+        });
+
+        marker.on('dragend', () => {
+            this.saveMapData();
+        });
     }
-    renderLine(l) {
-        return L.polyline([l.start, l.end], { color: '#2563eb', weight: 4 }).addTo(this.map);
-    }
-    renderArrow(a) {
-        const color = '#dc2626';
-        const line = L.polyline([a.start, a.end], { color: color, weight: 4 }).addTo(this.map);
+
+    updateArrowHeads(masterLine, start, end) {
+        const subLayers = masterLine.drawData.subLayers; // [head1, head2, label]
+        const head1 = subLayers[0], head2 = subLayers[1];
         
         const zoom = this.map.getZoom();
         const latScale = 1 / Math.pow(2, zoom - 1);
         const headLen = 20 * latScale * 0.0001; 
         const arrowAngle = Math.PI / 6;
 
-        const dy = a.end[0] - a.start[0];
-        const dx = a.end[1] - a.start[1];
+        const dy = end[0] - start[0];
+        const dx = end[1] - start[1];
         const len = Math.sqrt(dx*dx + dy*dy);
+        if(len === 0) return;
         const udx = dx / len;
         const udy = dy / len;
         const headSize = headLen * 1500; 
         
         const p1 = [
-            a.end[0] - headSize * (udy * Math.cos(arrowAngle) - udx * Math.sin(arrowAngle)),
-            a.end[1] - headSize * (udx * Math.cos(arrowAngle) + udy * Math.sin(arrowAngle))
+            end[0] - headSize * (udy * Math.cos(arrowAngle) - udx * Math.sin(arrowAngle)),
+            end[1] - headSize * (udx * Math.cos(arrowAngle) + udy * Math.sin(arrowAngle))
         ];
         const p2 = [
-            a.end[0] - headSize * (udy * Math.cos(-arrowAngle) - udx * Math.sin(-arrowAngle)),
-            a.end[1] - headSize * (udx * Math.cos(-arrowAngle) + udy * Math.sin(-arrowAngle))
+            end[0] - headSize * (udy * Math.cos(-arrowAngle) - udx * Math.sin(-arrowAngle)),
+            end[1] - headSize * (udx * Math.cos(-arrowAngle) + udy * Math.sin(-arrowAngle))
         ];
 
-        const h1 = L.polyline([a.end, p1], { color: color, weight: 4 }).addTo(this.map);
-        const h2 = L.polyline([a.end, p2], { color: color, weight: 4 }).addTo(this.map);
-        return [line, h1, h2];
+        head1.setLatLngs([end, p1]);
+        head2.setLatLngs([end, p2]);
     }
-    renderPolygon(p) {
-        return L.polygon(p.points, { color: '#16a34a', fillColor: '#22c55e', fillOpacity: 0.3, weight: 3 }).addTo(this.map);
+
+    /* --- Load / Save --- */
+
+    async loadMapData() {
+        const data = await window.DrawStorage.getElements(this.boardId);
+        
+        if (data && !Array.isArray(data)) {
+            this.features = { 
+                markers: data.markers || [], 
+                lines: data.lines || [], 
+                arrows: data.arrows || [], 
+                polygons: data.polygons || [],
+                paths: data.paths || []
+            };
+            this.history = [];
+            
+            // Reconstruct everything purely visual (don't addToHistory to avoid duplicates)
+            this.features.markers.forEach(m => this.renderFeature('markers', m));
+            this.features.lines.forEach(l => this.renderFeature('lines', l));
+            this.features.arrows.forEach(a => this.renderFeature('arrows', a));
+            this.features.polygons.forEach(p => this.renderFeature('polygons', p));
+            this.features.paths.forEach(p => this.renderFeature('paths', p));
+        }
+    }
+
+    renderFeature(type, data) {
+        // Ensure IDs exist for older saves
+        if(!data.id) data.id = this.generateId();
+
+        if(type === 'markers') {
+            const marker = L.marker([data.lat, data.lng]).addTo(this.map);
+            marker.bindPopup(`<b>${data.title}</b>`);
+            marker.drawData = { type, data };
+        } 
+        else if (type === 'lines') {
+            const line = L.polyline([data.start, data.end], { color: '#2563eb', weight: 4 }).addTo(this.map);
+            const dist = window.MapGeometry.calculateDistance(data.start, data.end);
+            const mid = window.MapGeometry.getLineMidpoint(data.start, data.end);
+            const label = window.MapLabels.createLabel(this.map, mid, window.MapGeometry.formatDistance(dist));
+            line.drawData = { type, data, label };
+        }
+        else if (type === 'arrows') {
+            const line = L.polyline([data.start, data.end], { color: '#dc2626', weight: 4 }).addTo(this.map);
+            // Simulate creation for arrow heads
+            const head1 = L.polyline([[0,0],[0,0]], { color: '#dc2626', weight: 4 }).addTo(this.map);
+            const head2 = L.polyline([[0,0],[0,0]], { color: '#dc2626', weight: 4 }).addTo(this.map);
+            const dist = window.MapGeometry.calculateDistance(data.start, data.end);
+            const mid = window.MapGeometry.getLineMidpoint(data.start, data.end);
+            const label = window.MapLabels.createLabel(this.map, mid, window.MapGeometry.formatDistance(dist), 'arrow-label');
+            line.drawData = { type, data, subLayers: [head1, head2, label], label };
+            this.updateArrowHeads(line, data.start, data.end);
+        }
+        else if (type === 'polygons') {
+            const poly = L.polygon(data.points, { color: '#16a34a', fillColor: '#22c55e', fillOpacity: 0.3, weight: 3 }).addTo(this.map);
+            const area = window.MapGeometry.calculatePolygonArea(data.points);
+            const center = window.MapGeometry.getPolygonCenter(data.points);
+            const label = window.MapLabels.createLabel(this.map, center, window.MapGeometry.formatArea(area), 'polygon-label');
+            poly.drawData = { type, data, label };
+        }
+        else if (type === 'paths') {
+            const path = L.polyline(data.points, { color: '#f59e0b', dashArray: '5, 10', weight: 4 }).addTo(this.map);
+            const dist = window.MapGeometry.calculatePathLength(data.points);
+            const label = window.MapLabels.createLabel(this.map, data.points[data.points.length-1], window.MapGeometry.formatDistance(dist), 'path-label');
+            path.drawData = { type, data, label };
+        }
     }
 
     async saveMapData() {
         await window.DrawStorage.saveElements(this.boardId, this.features);
-        document.getElementById("saveStatus").textContent = "Saving...";
-        setTimeout(() => document.getElementById("saveStatus").textContent = "Saved", 500);
+        const status = document.getElementById("saveStatus");
+        if(status) {
+            status.textContent = "Saving...";
+            setTimeout(() => status.textContent = "Saved", 500);
+        }
     }
 }
 

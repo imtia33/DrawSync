@@ -900,3 +900,59 @@ body.whiteboard-page footer {
 .confirm-btn.primary-btn:hover {
   background: #2563eb !important;
 }
+
+/* --- Map Measurement Labels --- */
+.map-measurement-label {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1f2937;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+  white-space: nowrap;
+  transform: translate(-50%, -50%); /* Center on coordinate */
+  transition: opacity 0.2s;
+}
+
+.map-measurement-label.dynamic-tooltip {
+  background: rgba(59, 130, 246, 0.9);
+  color: white;
+  border-color: #2563eb;
+  transform: translate(15px, 15px); /* Offset from cursor */
+}
+
+.map-measurement-label.polygon-label {
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid #16a34a;
+  color: #16a34a;
+}
+
+.map-measurement-label.arrow-label {
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid #dc2626;
+  color: #dc2626;
+}
+
+.map-measurement-label.path-label {
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid #f59e0b;
+  color: #d97706;
+}
+
+/* --- Map Edit Mode Vertex Handles --- */
+.vertex-edit-handle {
+  background: white;
+  border: 2px solid #2563eb;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: grab;
+  transition: transform 0.1s;
+}
+
+.vertex-edit-handle:active {
+  cursor: grabbing;
+  transform: scale(1.2);
+}

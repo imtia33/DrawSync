@@ -13,6 +13,8 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="~/js/storage.js"></script>
     <script src="~/js/whiteboard.js"></script>
+    <script src="~/js/map_geometry.js"></script>
+    <script src="~/js/map_labels.js"></script>
     <script src="~/js/map_integration.js"></script>
     
     <script>
@@ -78,9 +80,11 @@
         <div class="toolbar-center map-only">
             <div class="tool-group">
                 <button class="map-tool-btn active" data-map-tool="pan" title="Move Map"><i class="bi bi-arrows-move"></i></button>
+                <button class="map-tool-btn" data-map-tool="edit" title="Select / Edit"><i class="bi bi-cursor-fill"></i></button>
                 <button class="map-tool-btn" data-map-tool="marker" title="Add Marker"><i class="bi bi-geo-alt-fill"></i></button>
                 <button class="map-tool-btn" data-map-tool="line" title="Draw Line"><i class="bi bi-slash-lg"></i></button>
                 <button class="map-tool-btn" data-map-tool="arrow" title="Draw Arrow"><i class="bi bi-arrow-up-right"></i></button>
+                <button class="map-tool-btn" data-map-tool="path" title="Measure Path"><i class="bi bi-rulers"></i></button>
                 <button class="map-tool-btn" data-map-tool="polygon" title="Draw Area"><i class="bi bi-pentagon-fill"></i></button>
             </div>
             <div class="tool-divider"></div>
