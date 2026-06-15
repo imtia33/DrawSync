@@ -1,0 +1,382 @@
+/**
+ * realtime.js - SignalR Realtime Collaboration Client
+ * Handles WebSocket connection to the DrawingHub for live drawing sync.
+ */
+
+class RealtimeClient {
+  constructor() {
+    this.connection = null;
+    this.drawingId = null;
+    this.userName = null;
+    this.boardType = null;
+    this.myColor = null;
+    this.isConnected = false;
+    this.presence = []; // [{ userId, userName, color }]
+    this.remoteCursors = {}; // { userId: { userName, color, x, y, lastSeen } }
+
+    // Throttling for cursor sends (~30fps)
+    this._lastCursorSend = 0;
+    this._cursorSendInterval = 1000 / 30; // ~33ms
+
+    // Remote cursor cleanup interval
+    this._cursorCleanupInterval = null;
+
+    // Event callbacks (set by consumers)
+    this.onUserJoined = null; // (user) => {}
+    this.onUserLeft = null; // (user) => {}
+    this.onElementChanged = null; // (element, action, userId) => {}
+    this.onCursorMoved = null; // (userId, userName, color, cursor) => {}
+    this.onBoardCleared = null; // (userId) => {}
+    this.onToolChanged = null; // (userId, userName, color, tool) => {}
+    this.onConnectionStatusChanged = null; // (status) => {}
+  }
+
+  /**
+   * Connect to the SignalR hub and join the drawing room.
+   */
+  async connect(drawingId, userName, boardType) {
+    this.drawingId = drawingId;
+    this.userName = userName;
+    this.boardType = boardType;
+
+    // Build SignalR connection
+    this.connection = new signalR.HubConnectionBuilder()
+      .withUrl("/hubs/drawing")
+      .withAutomaticReconnect([0, 1000, 5000, 10000, 30000])
+      .configureLogging(signalR.LogLevel.Warning)
+      .build();
+
+    // Register server -> client handlers
+    this._registerHandlers();
+
+    // Register connection lifecycle handlers
+    this._registerConnectionHandlers();
+
+    try {
+      // Start connection
+      await this.connection.start();
+      this._updateConnectionStatus("connected");
+
+      // Join the drawing room
+      const result = await this.connection.invoke(
+        "JoinDrawing",
+        drawingId,
+        userName,
+        boardType,
+      );
+
+      if (result && result.success) {
+        this.myColor = result.color;
+        this.presence = result.presence || [];
+        this._renderPresence();
+        this._showPresenceBar();
+      }
+
+      // Start cursor cleanup
+      this._cursorCleanupInterval = setInterval(
+        () => this._cleanupCursors(),
+        5000,
+      );
+    } catch (err) {
+      console.error("SignalR connection failed:", err);
+
+      // Check if it's a "board full" error
+      if (err.message && err.message.includes("full")) {
+        this._showBoardFullModal();
+      } else {
+        this._updateConnectionStatus("disconnected");
+      }
+    }
+  }
+
+  /**
+   * Disconnect from the hub and leave the drawing room.
+   */
+  async disconnect() {
+    if (this._cursorCleanupInterval) {
+      clearInterval(this._cursorCleanupInterval);
+      this._cursorCleanupInterval = null;
+    }
+
+    if (this.connection && this.isConnected) {
+      try {
+        await this.connection.invoke("LeaveDrawing", this.drawingId);
+      } catch (e) {
+        // Ignore errors during disconnect
+      }
+      await this.connection.stop();
+    }
+
+    this.isConnected = false;
+    this.presence = [];
+    this.remoteCursors = {};
+  }
+
+  /**
+   * Send an element change to the server (add/update/delete).
+   */
+  async sendElement(element, action) {
+    if (!this.isConnected || !this.connection) return;
+
+    try {
+      // Serialize the element to a plain object
+      const elementData = this._serializeElement(element);
+      await this.connection.invoke(
+        "SendElement",
+        this.drawingId,
+        elementData,
+        action,
+      );
+    } catch (err) {
+      console.error("Failed to send element:", err);
+    }
+  }
+
+  /**
+   * Send cursor position to the server (throttled to ~30fps).
+   */
+  sendCursor(x, y) {
+    if (!this.isConnected || !this.connection) return;
+
+    const now = performance.now();
+    if (now - this._lastCursorSend < this._cursorSendInterval) return;
+    this._lastCursorSend = now;
+
+    this.connection.invoke("SendCursor", this.drawingId, { x, y }).catch(() => {
+      // Silently ignore cursor send failures
+    });
+  }
+
+  /**
+   * Send a board clear event to the server.
+   */
+  async sendClear() {
+    if (!this.isConnected || !this.connection) return;
+
+    try {
+      await this.connection.invoke("SendClear", this.drawingId);
+    } catch (err) {
+      console.error("Failed to send clear:", err);
+    }
+  }
+
+  /**
+   * Send tool change to the server.
+   */
+  async sendToolChange(tool) {
+    if (!this.isConnected || !this.connection) return;
+
+    try {
+      await this.connection.invoke("SendToolChange", this.drawingId, tool);
+    } catch (err) {
+      console.error("Failed to send tool change:", err);
+    }
+  }
+
+  // --- Private Methods ---
+
+  _registerHandlers() {
+    // User joined the drawing
+    this.connection.on("UserJoined", (user) => {
+      // Add to presence if not already there
+      if (!this.presence.find((p) => p.userId === user.userId)) {
+        this.presence.push(user);
+      }
+      this._renderPresence();
+
+      if (this.onUserJoined) {
+        this.onUserJoined(user);
+      }
+    });
+
+    // User left the drawing
+    this.connection.on("UserLeft", (data) => {
+      this.presence = this.presence.filter((p) => p.userId !== data.userId);
+      delete this.remoteCursors[data.userId];
+      this._renderPresence();
+      this._removeRemoteCursor(data.userId);
+
+      if (this.onUserLeft) {
+        this.onUserLeft(data);
+      }
+    });
+
+    // Element changed by another user
+    this.connection.on("ElementChanged", (data) => {
+      if (this.onElementChanged) {
+        this.onElementChanged(data.element, data.action, data.userId);
+      }
+    });
+
+    // Cursor moved by another user
+    this.connection.on("CursorMoved", (data) => {
+      this.remoteCursors[data.userId] = {
+        userName: data.userName,
+        color: data.color,
+        x: data.cursor.x,
+        y: data.cursor.y,
+        lastSeen: Date.now(),
+      };
+
+      if (this.onCursorMoved) {
+        this.onCursorMoved(data.userId, data.userName, data.color, data.cursor);
+      }
+    });
+
+    // Board cleared by another user
+    this.connection.on("BoardCleared", (data) => {
+      if (this.onBoardCleared) {
+        this.onBoardCleared(data.userId);
+      }
+    });
+
+    // Tool changed by another user
+    this.connection.on("ToolChanged", (data) => {
+      if (this.onToolChanged) {
+        this.onToolChanged(data.userId, data.userName, data.color, data.tool);
+      }
+    });
+
+    // Presence update (reassignment of colors, etc.)
+    this.connection.on("PresenceUpdate", (presenceList) => {
+      this.presence = presenceList;
+      this._renderPresence();
+    });
+  }
+
+  _registerConnectionHandlers() {
+    this.connection.onreconnecting(() => {
+      this.isConnected = false;
+      this._updateConnectionStatus("reconnecting");
+    });
+
+    this.connection.onreconnected(async () => {
+      this.isConnected = true;
+      this._updateConnectionStatus("connected");
+
+      // Rejoin the drawing room after reconnect
+      try {
+        const result = await this.connection.invoke(
+          "JoinDrawing",
+          this.drawingId,
+          this.userName,
+          this.boardType,
+        );
+        if (result && result.success) {
+          this.myColor = result.color;
+          this.presence = result.presence || [];
+          this._renderPresence();
+        }
+      } catch (err) {
+        console.error("Failed to rejoin drawing after reconnect:", err);
+      }
+    });
+
+    this.connection.onclose(() => {
+      this.isConnected = false;
+      this._updateConnectionStatus("disconnected");
+    });
+  }
+
+  _serializeElement(element) {
+    // Convert Element instance to a plain object for JSON serialization
+    if (!element) return null;
+
+    const obj = {};
+    // Copy all enumerable own properties
+    for (const key of Object.keys(element)) {
+      const val = element[key];
+      // Skip functions and undefined
+      if (typeof val === "function" || val === undefined) continue;
+      obj[key] = val;
+    }
+    return obj;
+  }
+
+  _updateConnectionStatus(status) {
+    const statusEl = document.getElementById("connectionStatus");
+    if (!statusEl) return;
+
+    statusEl.style.display = "flex";
+    const dot = statusEl.querySelector(".status-dot");
+    if (dot) {
+      dot.className = "status-dot " + status;
+    }
+
+    const titles = {
+      connected: "Connected",
+      reconnecting: "Reconnecting...",
+      disconnected: "Disconnected",
+    };
+    statusEl.title = titles[status] || status;
+
+    if (this.onConnectionStatusChanged) {
+      this.onConnectionStatusChanged(status);
+    }
+  }
+
+  _showPresenceBar() {
+    const bar = document.getElementById("presenceBar");
+    if (bar) bar.style.display = "flex";
+  }
+
+  _renderPresence() {
+    const container = document.getElementById("presenceAvatars");
+    const countEl = document.getElementById("presenceCount");
+    if (!container) return;
+
+    container.innerHTML = "";
+    for (const user of this.presence) {
+      const avatar = document.createElement("div");
+      avatar.className = "presence-avatar";
+      avatar.style.backgroundColor = user.color;
+      avatar.setAttribute("data-tooltip", user.userName);
+      // Show initials
+      const initials = user.userName
+        .split(" ")
+        .map((w) => w[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
+      avatar.textContent = initials;
+      container.appendChild(avatar);
+    }
+
+    if (countEl) {
+      countEl.textContent = `${this.presence.length}/5`;
+    }
+  }
+
+  _cleanupCursors() {
+    const now = Date.now();
+    const staleThreshold = 10000; // 10 seconds
+    for (const [userId, cursor] of Object.entries(this.remoteCursors)) {
+      if (now - cursor.lastSeen > staleThreshold) {
+        delete this.remoteCursors[userId];
+        this._removeRemoteCursor(userId);
+      }
+    }
+  }
+
+  _removeRemoteCursor(userId) {
+    const el = document.getElementById(`remote-cursor-${userId}`);
+    if (el) el.remove();
+  }
+
+  _showBoardFullModal() {
+    const modal = document.getElementById("boardFullModal");
+    if (modal) {
+      modal.style.display = "flex";
+      const closeBtn = document.getElementById("boardFullCloseBtn");
+      if (closeBtn) {
+        closeBtn.onclick = () => {
+          // Navigate back to whiteboard index
+          window.history.back();
+        };
+      }
+    }
+  }
+}
+
+// Export to global scope
+window.RealtimeClient = RealtimeClient;

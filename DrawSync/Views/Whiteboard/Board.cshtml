@@ -2,6 +2,9 @@
     Layout = "_Layout";
     ViewData["Title"] = ViewBag.BoardName ?? "Drawing Board";
     var boardType = ViewBag.BoardType as string ?? "whiteboard";
+    var isOrgBoard = (bool)(ViewBag.IsOrgBoard ?? false);
+    var userId = ViewBag.UserId as string ?? "anonymous";
+    var userName = ViewBag.UserName as string ?? "Anonymous";
 }
 
 <link rel="stylesheet" href="~/css/whiteboard.css" />
@@ -11,7 +14,10 @@
 @section Scripts {
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- SignalR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
     <script src="~/js/storage.js"></script>
+    <script src="~/js/realtime.js"></script>
     <script src="~/js/whiteboard.js"></script>
     <script src="~/js/map_geometry.js"></script>
     <script src="~/js/map_labels.js"></script>
@@ -20,6 +26,9 @@
     <script>
         document.body.classList.add('whiteboard-page');
         window.boardId = '@ViewBag.BoardId';
+        window.isOrgBoard = @isOrgBoard.ToString().ToLower();
+        window.currentUserId = '@userId';
+        window.currentUserName = '@userName';
         const serverBoardType = '@boardType';
 
         document.addEventListener("DOMContentLoaded", async () => {
@@ -39,6 +48,16 @@
                 if (window.Whiteboard) {
                     window.whiteboard = new Whiteboard("whiteboardCanvas", window.boardId);
                 }
+            }
+
+            // Connect to SignalR for org boards only
+            if (window.isOrgBoard && window.RealtimeClient) {
+                window.realtimeClient = new RealtimeClient();
+                await window.realtimeClient.connect(
+                    window.boardId,
+                    window.currentUserName,
+                    actualType
+                );
             }
         });
     </script>
@@ -92,6 +111,15 @@
         </div>
 
         <div class="header-right">
+            <!-- Presence Bar (shown when realtime is active) -->
+            <div id="presenceBar" class="presence-bar" style="display: none;">
+                <div id="presenceAvatars" class="presence-avatars"></div>
+                <span id="presenceCount" class="presence-count">1/5</span>
+            </div>
+            <!-- Connection Status Indicator -->
+            <div id="connectionStatus" class="connection-status" style="display: none;" title="Disconnected">
+                <span class="status-dot disconnected"></span>
+            </div>
             <button id="undoBtn" class="action-btn whiteboard-only" title="Undo (Ctrl+Z)"><i class="bi bi-arrow-counterclockwise"></i></button>
             <button id="redoBtn" class="action-btn whiteboard-only" title="Redo (Ctrl+Y)"><i class="bi bi-arrow-clockwise"></i></button>
             <div class="export-dropdown">
@@ -288,6 +316,20 @@
             </div>
         </div>
     </div>
+
+    <!-- Board Full Modal (5-user limit) -->
+    <div id="boardFullModal" class="custom-modal" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-icon" style="background: hsl(38, 92%, 50%, 0.1); color: #f59e0b;">
+                <i class="bi bi-people-fill"></i>
+            </div>
+            <h2>Board is Full</h2>
+            <p>This board has reached the maximum of 5 concurrent users. Please try again later.</p>
+            <div class="modal-btns">
+                <button id="boardFullCloseBtn" class="confirm-btn primary-btn">Go Back</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -319,7 +361,7 @@
         transition: all 0.2s;
     }
     .map-tool-btn:hover { background: var(--secondary); color: var(--foreground); }
-    .map-tool-btn.active { background: oklch(from var(--primary) l c h / 0.1); color: var(--primary); }
+    .map-tool-btn.active { background: hsl(from var(--primary) h s l / 0.1); color: var(--primary); }
     
     .map-info-text {
         font-size: 0.8rem;
@@ -334,6 +376,114 @@
         background: #aad3df; /* Leaflet default bg */
         border-radius: 12px;
         overflow: hidden;
+    }
+
+    /* Presence Bar */
+    .presence-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-right: 12px;
+        padding: 4px 10px;
+        background: var(--secondary, #f1f5f9);
+        border-radius: 20px;
+    }
+    .presence-avatars {
+        display: flex;
+        align-items: center;
+    }
+    .presence-avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: white;
+        border: 2px solid var(--card, #fff);
+        margin-left: -6px;
+        transition: transform 0.2s;
+        cursor: default;
+        position: relative;
+    }
+    .presence-avatar:first-child { margin-left: 0; }
+    .presence-avatar:hover { transform: scale(1.15); z-index: 10; }
+    .presence-avatar[data-tooltip]:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.8);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        white-space: nowrap;
+        margin-top: 4px;
+        z-index: 100;
+    }
+    .presence-count {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--muted-foreground, #64748b);
+    }
+
+    /* Connection Status */
+    .connection-status {
+        display: flex;
+        align-items: center;
+        margin-right: 8px;
+    }
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        transition: background 0.3s;
+    }
+    .status-dot.connected { background: #10b981; box-shadow: 0 0 6px rgba(16, 185, 129, 0.5); }
+    .status-dot.reconnecting { background: #f59e0b; box-shadow: 0 0 6px rgba(245, 158, 11, 0.5); animation: pulse 1s infinite; }
+    .status-dot.disconnected { background: #ef4444; box-shadow: 0 0 6px rgba(239, 68, 68, 0.5); }
+
+    @@keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+    }
+
+    /* Remote Cursors Overlay */
+    .remote-cursors-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 1000;
+    }
+    .remote-cursor-label {
+        position: absolute;
+        pointer-events: none;
+        transform: translate(12px, 12px);
+        transition: left 0.05s linear, top 0.05s linear;
+    }
+    .remote-cursor-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 2px solid white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .remote-cursor-name {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.65rem;
+        font-weight: 600;
+        color: white;
+        margin-left: 4px;
+        white-space: nowrap;
     }
 </style>
 

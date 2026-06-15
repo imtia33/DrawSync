@@ -7,6 +7,8 @@ using System.Security.Claims;
 using Appwrite;
 using Appwrite.Services;
 using DrawSync.Filters;
+using Usage = DrawSync.Models.Usage;
+using Organization = DrawSync.Models.Organization;
 
 namespace DrawSync.Controllers
 {
@@ -18,11 +20,13 @@ namespace DrawSync.Controllers
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly Teams _teams;
+        private readonly Presences _presences;
 
-        public OrganizationDashboardController(IUnitOfWork unitOfWork, Teams teams)
+        public OrganizationDashboardController(IUnitOfWork unitOfWork, Teams teams, Presences presences)
         {
             _unitOfWork = unitOfWork;
             _teams = teams;
+            _presences = presences;
         }
 
         private string? GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -134,7 +138,7 @@ namespace DrawSync.Controllers
             return NoContent();
         }
 
-        // Members - List
+        // Members - List (with online presence)
         [HttpGet("members")]
         public async Task<ActionResult> ListMembers(string organizationId)
         {
@@ -144,7 +148,78 @@ namespace DrawSync.Controllers
             try
             {
                 var teamMembers = await _teams.ListMemberships(organizationId);
-                return Ok(teamMembers);
+
+                // Fetch active presences for this team
+                var onlineUserIds = new HashSet<string>();
+                try
+                {
+                    var presences = await _presences.List(
+                        queries: new List<string> { Query.Equal("status", "online") }
+                    );
+                    foreach (var p in presences.Presences)
+                    {
+                        // Check if this presence has permission for this team
+                        // (we set Role.Team(orgId) when upserting)
+                        onlineUserIds.Add(p.UserId);
+                    }
+                }
+                catch { /* Presences may not be configured — continue without online status */ }
+
+                // Enrich memberships with online status
+                var enrichedMembers = teamMembers.Memberships.Select(m => new
+                {
+                    m.Id,
+                    m.UserId,
+                    m.UserName,
+                    UserEmail = m.UserEmail,
+                    m.Roles,
+                    Confirm = m.Confirm,
+                    m.Mfa,
+                    CreatedAt = m.CreatedAt,
+                    IsOnline = onlineUserIds.Contains(m.UserId)
+                }).ToList();
+
+                return Ok(new { memberships = enrichedMembers, total = enrichedMembers.Count });
+            }
+            catch (AppwriteException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        // Presence - Heartbeat (upsert user presence)
+        [HttpPut("presence")]
+        public async Task<IActionResult> UpsertPresence(string organizationId)
+        {
+            if (!await IsUserInOrgAsync(organizationId))
+                return Forbid();
+
+            var userId = GetUserId();
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            try
+            {
+                var userName = User.Identity?.Name ?? "Unknown";
+                var presenceId = $"{organizationId}_{userId}";
+
+                await _presences.Upsert(
+                    presenceId: presenceId,
+                    userId: userId,
+                    status: "online",
+                    permissions: new List<string>
+                    {
+                        Permission.Read(Role.Team(organizationId))
+                    },
+                    expiresAt: DateTime.UtcNow.AddMinutes(2).ToString("o"),
+                    metadata: new Dictionary<string, object>
+                    {
+                        { "userName", userName },
+                        { "organizationId", organizationId }
+                    }
+                );
+
+                return Ok(new { status = "online" });
             }
             catch (AppwriteException ex)
             {

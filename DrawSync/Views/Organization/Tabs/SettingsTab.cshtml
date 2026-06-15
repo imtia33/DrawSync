@@ -60,11 +60,11 @@
     .lock-icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: var(--muted-foreground); opacity: 0.5; }
     .btn-save-settings { background: var(--primary); color: var(--primary-foreground); border: none; border-radius: var(--radius); padding: 14px 28px; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: var(--shadow-md); }
     .btn-save-settings:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
-    .danger-zone-card { padding: 32px; border: 1px solid oklch(from var(--destructive) l c h / 0.2); background: oklch(from var(--destructive) l c h / 0.05); }
+    .danger-zone-card { padding: 32px; border: 1px solid hsl(from var(--destructive) h s l / 0.2); background: hsl(from var(--destructive) h s l / 0.05); }
     .danger-header { display: flex; align-items: center; gap: 10px; color: var(--destructive); margin-bottom: 12px; }
     .danger-header h3 { font-size: 1.1rem; font-weight: 800; color: var(--destructive); margin: 0; }
     .danger-desc { font-size: 0.9rem; color: var(--destructive); opacity: 0.8; margin-bottom: 24px; line-height: 1.5; }
-    .btn-delete-org { width: 100%; background: var(--card); color: var(--destructive); border: 1px solid oklch(from var(--destructive) l c h / 0.3); border-radius: var(--radius); padding: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-delete-org { width: 100%; background: var(--card); color: var(--destructive); border: 1px solid hsl(from var(--destructive) h s l / 0.3); border-radius: var(--radius); padding: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
     .btn-delete-org:hover { background: var(--destructive); color: var(--destructive-foreground); border-color: var(--destructive); box-shadow: var(--shadow-lg); }
     @@media (max-width: 992px) { .settings-grid { grid-template-columns: 1fr; } }
 </style>

@@ -20,7 +20,8 @@ class Element {
     this.endY = y;
 
     // Neon Specific Styles
-    this.glowIntensity = style.glowIntensity !== undefined ? style.glowIntensity : 15;
+    this.glowIntensity =
+      style.glowIntensity !== undefined ? style.glowIntensity : 15;
 
     // Text Specific Styles
     this.text = style.text || "";
@@ -281,7 +282,9 @@ class Element {
     ctx.shadowBlur = blurAmount * 0.35;
     ctx.strokeStyle = colors.core;
     // Core sits beautifully inside the border/main line
-    ctx.lineWidth = hasFill ? Math.max(1.0, this.strokeWidth * 0.4) : Math.max(1.5, this.strokeWidth * 0.4);
+    ctx.lineWidth = hasFill
+      ? Math.max(1.0, this.strokeWidth * 0.4)
+      : Math.max(1.5, this.strokeWidth * 0.4);
     ctx.globalAlpha = this.opacity / 100;
     this.drawPath(ctx);
 
@@ -293,7 +296,9 @@ class Element {
       return { core: "transparent", glow: "transparent" };
     }
 
-    let r = 0, g = 0, b = 0;
+    let r = 0,
+      g = 0,
+      b = 0;
     if (hex.startsWith("#")) {
       if (hex.length === 4) {
         r = parseInt(hex[1] + hex[1], 16);
@@ -328,10 +333,14 @@ class Element {
       coreB = Math.round(b * 0.4 + 255 * 0.6);
     }
 
-    const coreHex = "#" + [coreR, coreG, coreB].map(x => {
-      const clamped = Math.max(0, Math.min(255, x));
-      return clamped.toString(16).padStart(2, "0");
-    }).join("");
+    const coreHex =
+      "#" +
+      [coreR, coreG, coreB]
+        .map((x) => {
+          const clamped = Math.max(0, Math.min(255, x));
+          return clamped.toString(16).padStart(2, "0");
+        })
+        .join("");
 
     return { core: coreHex, glow: hex };
   }
@@ -468,7 +477,8 @@ class Element {
     const lines = this.text.split("\n");
     const lineHeight = this.fontSize * 1.2;
 
-    const isTransparentFill = !this.fillColor || this.fillColor === "transparent";
+    const isTransparentFill =
+      !this.fillColor || this.fillColor === "transparent";
     ctx.fillStyle = isTransparentFill ? this.strokeColor : this.fillColor;
 
     for (let i = 0; i < lines.length; i++) {
@@ -477,7 +487,12 @@ class Element {
 
       ctx.fillText(line, this.x, lineY);
 
-      if (!isTransparentFill && this.strokeColor && this.strokeColor !== "transparent" && this.strokeWidth > 0) {
+      if (
+        !isTransparentFill &&
+        this.strokeColor &&
+        this.strokeColor !== "transparent" &&
+        this.strokeWidth > 0
+      ) {
         ctx.strokeText(line, this.x, lineY);
       }
 
@@ -532,6 +547,9 @@ class Whiteboard {
     this.hasGrid = false;
     this.cpTarget = "stroke";
     this.currentHue = 0;
+    this.realtime = null;
+    this.remoteCursors = {}; // { userId: { userName, color, targetX, targetY, displayX, displayY, tool, lastSeen } }
+    this._cursorAnimFrame = null;
     this.init();
   }
 
@@ -553,6 +571,8 @@ class Whiteboard {
     });
     this.setupEventListeners();
     this.initColorPicker();
+    this.setupRealtime();
+    this._startCursorAnimLoop();
     this.render();
   }
 
@@ -625,7 +645,10 @@ class Whiteboard {
 
       const swatch = document.getElementById(this.cpTarget + "Swatch");
       swatch.style.backgroundColor = this.stagedColor;
-      swatch.classList.toggle("is-transparent", this.stagedColor === "transparent");
+      swatch.classList.toggle(
+        "is-transparent",
+        this.stagedColor === "transparent",
+      );
 
       document.getElementById("colorPickerPanel").style.display = "none";
     };
@@ -702,10 +725,13 @@ class Whiteboard {
       const clicked = this.elements
         .slice()
         .reverse()
-        .find((el) => el.type === "text" && el.contains(worldPos.x, worldPos.y));
+        .find(
+          (el) => el.type === "text" && el.contains(worldPos.x, worldPos.y),
+        );
       if (clicked) {
         const rect = this.canvas.getBoundingClientRect();
-        const screenX = rect.left + clicked.x * this.camera.zoom + this.camera.x;
+        const screenX =
+          rect.left + clicked.x * this.camera.zoom + this.camera.x;
         const screenY = rect.top + clicked.y * this.camera.zoom + this.camera.y;
         e.preventDefault();
         this.startTyping(clicked, screenX, screenY, clicked);
@@ -727,6 +753,11 @@ class Whiteboard {
     this.updateTextSettingsVisibility();
     this.updateNeonSettingsVisibility();
     this.render();
+
+    // Broadcast tool change to peers
+    if (this.realtime) {
+      this.realtime.sendToolChange(tool);
+    }
   }
 
   applyTheme() {
@@ -814,8 +845,10 @@ class Whiteboard {
         const angle = ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
         document.getElementById("svCursor").style.display = "block";
         updateSV(angle);
-        const cursorLeft = parseFloat(document.getElementById("svCursor").style.left) - 45 || 0;
-        const cursorTop = parseFloat(document.getElementById("svCursor").style.top) - 45 || 0;
+        const cursorLeft =
+          parseFloat(document.getElementById("svCursor").style.left) - 45 || 0;
+        const cursorTop =
+          parseFloat(document.getElementById("svCursor").style.top) - 45 || 0;
         const s = (cursorLeft / 139) * 100;
         const v = (1 - cursorTop / 139) * 100;
         this.updateColorPickerUI(this.hsvToHex(angle, s, v));
@@ -880,7 +913,9 @@ class Whiteboard {
     if (!hex || hex === "transparent" || !hex.startsWith("#")) {
       return { h: 0, s: 0, v: 0 };
     }
-    let r = 0, g = 0, b = 0;
+    let r = 0,
+      g = 0,
+      b = 0;
     if (hex.length === 4) {
       r = parseInt(hex[1] + hex[1], 16) / 255;
       g = parseInt(hex[2] + hex[2], 16) / 255;
@@ -890,17 +925,26 @@ class Whiteboard {
       g = parseInt(hex.slice(3, 5), 16) / 255;
       b = parseInt(hex.slice(5, 7), 16) / 255;
     }
-    const max = Math.max(r, g, b), min = Math.min(r, g, b);
-    let h, s, v = max;
+    const max = Math.max(r, g, b),
+      min = Math.min(r, g, b);
+    let h,
+      s,
+      v = max;
     const d = max - min;
     s = max === 0 ? 0 : d / max;
     if (max === min) {
       h = 0;
     } else {
       switch (max) {
-        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-        case g: h = (b - r) / d + 2; break;
-        case b: h = (r - g) / d + 4; break;
+        case r:
+          h = (g - b) / d + (g < b ? 6 : 0);
+          break;
+        case g:
+          h = (b - r) / d + 2;
+          break;
+        case b:
+          h = (r - g) / d + 4;
+          break;
       }
       h /= 6;
     }
@@ -961,7 +1005,8 @@ class Whiteboard {
     document.getElementById("pickerTitle").textContent =
       target === "stroke" ? "Stroke Color" : "Fill Color";
 
-    this.originalColor = target === "stroke" ? this.style.strokeColor : this.style.fillColor;
+    this.originalColor =
+      target === "stroke" ? this.style.strokeColor : this.style.fillColor;
     this.stagedColor = this.originalColor;
 
     document.getElementById("hexInput").value = this.originalColor;
@@ -1044,18 +1089,27 @@ class Whiteboard {
     this.isDrawing = true;
     const tool = this.currentTool;
     this.currentElement = new Element(tool, worldPos.x, worldPos.y, this.style);
-    if (tool === "pencil" || tool === "neon") this.currentElement.points.push(worldPos);
+    if (tool === "pencil" || tool === "neon")
+      this.currentElement.points.push(worldPos);
   }
 
   onMouseMove(e) {
     const { clientX, clientY } = e;
     const worldPos = this.screenToWorld(clientX, clientY);
+
+    // Send cursor position to peers (throttled in realtime.js)
+    if (this.realtime) {
+      this.realtime.sendCursor(worldPos.x, worldPos.y);
+    }
+
     const cursor = document.getElementById("customCursor");
     cursor.style.display = "block";
     cursor.style.left = clientX + "px";
     cursor.style.top = clientY + "px";
     const size =
-      this.currentTool === "pencil" || this.currentTool === "neon" || this.currentTool === "eraser"
+      this.currentTool === "pencil" ||
+      this.currentTool === "neon" ||
+      this.currentTool === "eraser"
         ? this.style.strokeWidth * this.camera.zoom
         : 20;
     cursor.style.width = size + "px";
@@ -1145,7 +1199,10 @@ class Whiteboard {
       }
     }
     if (!this.isDrawing || !this.currentElement) return;
-    if (this.currentElement.type === "pencil" || this.currentElement.type === "neon") {
+    if (
+      this.currentElement.type === "pencil" ||
+      this.currentElement.type === "neon"
+    ) {
       this.currentElement.points.push(worldPos);
     } else {
       let dx = worldPos.x - this.currentElement.x;
@@ -1186,9 +1243,19 @@ class Whiteboard {
       this.isMoving = false;
       this.isResizing = false;
       this.save();
+      // Broadcast updated elements to peers
+      if (this.realtime) {
+        this.selectedElements.forEach((el) => {
+          this.realtime.sendElement(el, "update");
+        });
+      }
     }
     if (this.isDrawing && this.currentElement) {
       this.elements.push(this.currentElement);
+      // Broadcast new element to peers
+      if (this.realtime) {
+        this.realtime.sendElement(this.currentElement, "add");
+      }
       this.currentElement = null;
       this.save();
       this.render();
@@ -1209,7 +1276,9 @@ class Whiteboard {
           const segments = [];
           let currentSegment = [];
           for (const p of el.points) {
-            const d = Math.sqrt((p.x - worldPos.x) ** 2 + (p.y - worldPos.y) ** 2);
+            const d = Math.sqrt(
+              (p.x - worldPos.x) ** 2 + (p.y - worldPos.y) ** 2,
+            );
             if (d >= radius) {
               currentSegment.push(p);
             } else {
@@ -1243,12 +1312,29 @@ class Whiteboard {
     }
 
     if (changed) {
+      const oldElements = this.elements;
       this.elements = newElements;
       this.selectedElements = this.selectedElements.filter((el) =>
         this.elements.includes(el),
       );
       this.render();
       this.save();
+
+      // Broadcast erase changes to peers
+      if (this.realtime) {
+        // Send removed elements as deletes (were in old but not in new)
+        for (const el of oldElements) {
+          if (!newElements.includes(el)) {
+            this.realtime.sendElement(el, "delete");
+          }
+        }
+        // Send new segments from split strokes as adds (new Element instances)
+        for (const el of newElements) {
+          if (!oldElements.includes(el)) {
+            this.realtime.sendElement(el, "add");
+          }
+        }
+      }
     }
   }
 
@@ -1315,6 +1401,12 @@ class Whiteboard {
     if (e.code === "Space") this.isSpacePressed = true;
     if (e.key === "Delete" || e.key === "Backspace") {
       if (this.selectedElements.length > 0) {
+        // Broadcast deleted elements to peers
+        if (this.realtime) {
+          this.selectedElements.forEach((el) => {
+            this.realtime.sendElement(el, "delete");
+          });
+        }
         this.elements = this.elements.filter(
           (el) => !this.selectedElements.includes(el),
         );
@@ -1381,6 +1473,10 @@ class Whiteboard {
     });
 
     if (this.currentElement) this.currentElement.draw(this.ctx, isDark);
+
+    // Draw remote cursors on top
+    this._renderRemoteCursors();
+
     this.ctx.restore();
   }
 
@@ -1451,6 +1547,10 @@ class Whiteboard {
     this.render();
     this.save();
     this.hideClearModal();
+    // Broadcast clear to peers
+    if (this.realtime) {
+      this.realtime.sendClear();
+    }
   }
   changeZoom(delta) {
     const zoomChange = 1 + delta;
@@ -1496,8 +1596,11 @@ class Whiteboard {
   updateTextSettingsVisibility() {
     const textSettings = document.getElementById("textSettingsSection");
     if (textSettings) {
-      const hasTextSelected = this.selectedElements.some((el) => el.type === "text");
-      textSettings.style.display = (this.currentTool === "text" || hasTextSelected) ? "block" : "none";
+      const hasTextSelected = this.selectedElements.some(
+        (el) => el.type === "text",
+      );
+      textSettings.style.display =
+        this.currentTool === "text" || hasTextSelected ? "block" : "none";
     }
   }
 
@@ -1508,12 +1611,16 @@ class Whiteboard {
     document.getElementById("fontSizeVal").textContent = el.fontSize + "px";
     document.getElementById("btnBold").classList.toggle("active", el.bold);
     document.getElementById("btnItalic").classList.toggle("active", el.italic);
-    document.getElementById("btnUnderline").classList.toggle("active", el.underline);
+    document
+      .getElementById("btnUnderline")
+      .classList.toggle("active", el.underline);
   }
 
   updateNeonSettingsVisibility() {
     const neonSettings = document.querySelectorAll(".neon-only-setting");
-    const hasNeonSelected = this.selectedElements.some((el) => el.type === "neon");
+    const hasNeonSelected = this.selectedElements.some(
+      (el) => el.type === "neon",
+    );
     const isNeonActive = this.currentTool === "neon" || hasNeonSelected;
 
     neonSettings.forEach((el) => {
@@ -1521,7 +1628,9 @@ class Whiteboard {
     });
 
     if (hasNeonSelected) {
-      const selectedNeon = this.selectedElements.find((el) => el.type === "neon");
+      const selectedNeon = this.selectedElements.find(
+        (el) => el.type === "neon",
+      );
       if (selectedNeon) {
         this.syncNeonSettingsUI(selectedNeon);
       }
@@ -1589,7 +1698,12 @@ class Whiteboard {
     textarea.style.fontStyle = source.italic ? "italic" : "normal";
     textarea.style.textDecoration = source.underline ? "underline" : "none";
 
-    const textColor = source.fillColor !== "transparent" ? source.fillColor : (source.strokeColor !== "transparent" ? source.strokeColor : "#000000");
+    const textColor =
+      source.fillColor !== "transparent"
+        ? source.fillColor
+        : source.strokeColor !== "transparent"
+          ? source.strokeColor
+          : "#000000";
     textarea.style.color = textColor;
 
     textarea.value = existingElement ? existingElement.text : "";
@@ -1701,6 +1815,283 @@ class Whiteboard {
         commit();
       }
     };
+  }
+
+  // --- Realtime Collaboration Methods ---
+
+  /**
+   * Set up SignalR realtime callbacks if available.
+   */
+  setupRealtime() {
+    if (!window.realtimeClient) return;
+
+    this.realtime = window.realtimeClient;
+
+    // Handle incoming element changes from peers
+    this.realtime.onElementChanged = (elementData, action, userId) => {
+      this._applyRemoteElementChange(elementData, action);
+    };
+
+    // Handle incoming cursor movements from peers (set target for lerp)
+    this.realtime.onCursorMoved = (userId, userName, color, cursor) => {
+      const existing = this.remoteCursors[userId];
+      if (existing) {
+        // Update target position (lerp will smooth it out)
+        existing.targetX = cursor.x;
+        existing.targetY = cursor.y;
+        existing.lastSeen = Date.now();
+      } else {
+        // New cursor - start at target position (no jump from 0,0)
+        this.remoteCursors[userId] = {
+          userName,
+          color,
+          targetX: cursor.x,
+          targetY: cursor.y,
+          displayX: cursor.x,
+          displayY: cursor.y,
+          tool: "select",
+          lastSeen: Date.now(),
+        };
+      }
+    };
+
+    // Handle board clear from peers
+    this.realtime.onBoardCleared = (userId) => {
+      this.elements = [];
+      this.redoStack = [];
+      this.render();
+      this.save();
+    };
+
+    // Handle user left - remove their cursor
+    this.realtime.onUserLeft = (data) => {
+      delete this.remoteCursors[data.userId];
+    };
+
+    // Handle tool change from peers
+    this.realtime.onToolChanged = (userId, userName, color, tool) => {
+      if (this.remoteCursors[userId]) {
+        this.remoteCursors[userId].tool = tool;
+      }
+    };
+  }
+
+  /**
+   * Apply a remote element change from a peer.
+   */
+  _applyRemoteElementChange(elementData, action) {
+    if (!elementData) return;
+
+    switch (action) {
+      case "add": {
+        const el = this._reconstructElement(elementData);
+        // Avoid duplicates by checking element ID
+        if (!this.elements.find((e) => e.id === el.id)) {
+          this.elements.push(el);
+        }
+        break;
+      }
+      case "update": {
+        const existing = this.elements.find((e) => e.id === elementData.id);
+        if (existing) {
+          Object.assign(existing, elementData);
+          // Reconstruct points array if needed
+          if (elementData.points) {
+            existing.points = elementData.points;
+          }
+        } else {
+          // Element not found locally, add it
+          const el = this._reconstructElement(elementData);
+          this.elements.push(el);
+        }
+        break;
+      }
+      case "delete": {
+        this.elements = this.elements.filter((e) => e.id !== elementData.id);
+        this.selectedElements = this.selectedElements.filter(
+          (e) => e.id !== elementData.id,
+        );
+        break;
+      }
+    }
+
+    this.save();
+    this.render();
+  }
+
+  /**
+   * Reconstruct an Element instance from a plain object received via SignalR.
+   */
+  _reconstructElement(data) {
+    const el = new Element(
+      data.type || "pencil",
+      data.x || 0,
+      data.y || 0,
+      data,
+    );
+    // Copy all properties from the data
+    Object.assign(el, data);
+    // Ensure points is an array
+    if (data.points && Array.isArray(data.points)) {
+      el.points = data.points;
+    }
+    return el;
+  }
+
+  /**
+   * Render remote user cursors on the canvas with smooth lerp animation.
+   */
+  _renderRemoteCursors() {
+    const now = Date.now();
+    const staleThreshold = 10000; // 10 seconds
+
+    // Tool icon map (Bootstrap icon unicode characters)
+    const toolIcons = {
+      select: "\uF2E2", // cursor-fill
+      pencil: "\uF4CB", // pencil-fill
+      neon: "\uF4A0", // magic (sparkle)
+      eraser: "\uF339", // eraser-fill
+      text: "\uF5C0", // type
+      pan: "\uF3D1", // hand-index-thumb
+      line: "\uF534", // slash-lg
+      arrow: "\uF138", // arrow-up-right
+      rectangle: "\uF53E", // square
+      circle: "\uF28A", // circle
+      diamond: "\uF304", // diamond
+    };
+
+    for (const [userId, cursor] of Object.entries(this.remoteCursors)) {
+      // Skip stale cursors
+      if (now - cursor.lastSeen > staleThreshold) continue;
+
+      const x = cursor.displayX;
+      const y = cursor.displayY;
+      const color = cursor.color || "#3b82f6";
+      const name = cursor.userName || "User";
+      const tool = cursor.tool || "select";
+
+      // Draw cursor arrow
+      this.ctx.save();
+      this.ctx.translate(x, y);
+
+      // Cursor pointer shape
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, 0);
+      this.ctx.lineTo(0, 14);
+      this.ctx.lineTo(4, 11);
+      this.ctx.lineTo(7, 17);
+      this.ctx.lineTo(9, 16);
+      this.ctx.lineTo(6, 10);
+      this.ctx.lineTo(10, 9);
+      this.ctx.closePath();
+
+      // Fill with user color
+      this.ctx.fillStyle = color;
+      this.ctx.fill();
+      this.ctx.strokeStyle = "white";
+      this.ctx.lineWidth = 1.5 / this.camera.zoom;
+      this.ctx.stroke();
+
+      // Draw name + tool label
+      const label = name.split(" ")[0]; // First name only
+      const fontSize = 11 / this.camera.zoom;
+      this.ctx.font = `600 ${fontSize}px Inter, sans-serif`;
+      const textWidth = this.ctx.measureText(label).width;
+      const labelX = 12 / this.camera.zoom;
+      const labelY = 16 / this.camera.zoom;
+      const padding = 4 / this.camera.zoom;
+      const borderRadius = 3 / this.camera.zoom;
+
+      // Name badge background
+      this.ctx.fillStyle = color;
+      this.ctx.beginPath();
+      this.ctx.roundRect(
+        labelX - padding,
+        labelY - fontSize - padding,
+        textWidth + padding * 2,
+        fontSize + padding * 2,
+        borderRadius,
+      );
+      this.ctx.fill();
+
+      // Name badge text
+      this.ctx.fillStyle = "white";
+      this.ctx.fillText(label, labelX, labelY);
+
+      // Tool badge (below the name badge)
+      const toolLabel = tool.charAt(0).toUpperCase() + tool.slice(1);
+      const toolFontSize = 9 / this.camera.zoom;
+      this.ctx.font = `500 ${toolFontSize}px Inter, sans-serif`;
+      const toolTextWidth = this.ctx.measureText(toolLabel).width;
+      const toolBadgeY = labelY + fontSize + padding * 2;
+      const iconSize = (toolFontSize + 2) / this.camera.zoom;
+      const toolBadgeWidth = toolTextWidth + iconSize + padding * 3;
+
+      // Tool badge background (semi-transparent)
+      this.ctx.fillStyle = color + "CC"; // ~80% opacity
+      this.ctx.beginPath();
+      this.ctx.roundRect(
+        labelX - padding,
+        toolBadgeY - toolFontSize - padding,
+        toolBadgeWidth,
+        toolFontSize + padding * 2,
+        borderRadius,
+      );
+      this.ctx.fill();
+
+      // Tool icon (draw as bootstrap icon font glyph)
+      const iconChar = toolIcons[tool] || toolIcons["select"];
+      this.ctx.font = `400 ${iconSize}px "bootstrap-icons"`;
+      this.ctx.fillStyle = "rgba(255,255,255,0.9)";
+      this.ctx.fillText(iconChar, labelX, toolBadgeY);
+
+      // Tool name text
+      this.ctx.font = `500 ${toolFontSize}px Inter, sans-serif`;
+      this.ctx.fillStyle = "rgba(255,255,255,0.9)";
+      this.ctx.fillText(toolLabel, labelX + iconSize + padding, toolBadgeY);
+
+      this.ctx.restore();
+    }
+  }
+
+  /**
+   * Start the cursor animation loop that lerps display positions toward targets.
+   */
+  _startCursorAnimLoop() {
+    const lerpFactor = 0.25; // Smooth but responsive
+    const snapThreshold = 0.5; // Snap when very close
+
+    const animate = () => {
+      let needsRender = false;
+
+      for (const cursor of Object.values(this.remoteCursors)) {
+        const dx = cursor.targetX - cursor.displayX;
+        const dy = cursor.targetY - cursor.displayY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > snapThreshold) {
+          cursor.displayX += dx * lerpFactor;
+          cursor.displayY += dy * lerpFactor;
+          needsRender = true;
+        } else if (
+          cursor.displayX !== cursor.targetX ||
+          cursor.displayY !== cursor.targetY
+        ) {
+          // Snap to exact position
+          cursor.displayX = cursor.targetX;
+          cursor.displayY = cursor.targetY;
+          needsRender = true;
+        }
+      }
+
+      if (needsRender) {
+        this.render();
+      }
+
+      this._cursorAnimFrame = requestAnimationFrame(animate);
+    };
+
+    this._cursorAnimFrame = requestAnimationFrame(animate);
   }
 }
 

@@ -105,7 +105,7 @@
     }
 
     .drawing-card:hover .card-icon {
-        background: oklch(from var(--primary) l c h / 0.12);
+        background: hsl(from var(--primary) h s l / 0.12);
     }
 
     .drawing-card h4 {
@@ -158,7 +158,7 @@
     }
 
     .btn-delete:hover {
-        background: oklch(from var(--destructive) l c h / 0.1);
+        background: hsl(from var(--destructive) h s l / 0.1);
     }
 
     .loading-state {
@@ -192,7 +192,7 @@
                         const isMap = d.type === 'map';
                         return `
                             <div class="drawing-card" onclick="window.location.href='/organization/${orgId}/whiteboard/board/${d['$id']}'">
-                                <div class="card-icon" style="background: ${isMap ? 'oklch(from var(--primary) l c h / 0.1)' : 'var(--secondary)'}; color: ${isMap ? '#3b82f6' : 'var(--primary)'}">
+                                <div class="card-icon" style="background: ${isMap ? 'hsl(from var(--primary) h s l / 0.1)' : 'var(--secondary)'}; color: ${isMap ? '#3b82f6' : 'var(--primary)'}">
                                     <i class="bi ${isMap ? 'bi-map-fill' : 'bi-brush-fill'}"></i>
                                 </div>
                                 <h4>${d.name}</h4>

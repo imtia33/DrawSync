@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DrawSync.Filters;
+using System.Security.Claims;
 
 namespace DrawSync.Controllers
 {
@@ -32,16 +33,22 @@ namespace DrawSync.Controllers
             ViewBag.BoardId = id;
             ViewBag.OrgId = organizationId;
             
+            // Pass user identity for SignalR hub
+            ViewBag.UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous";
+            ViewBag.UserName = User.Identity?.Name ?? "Anonymous";
+            
             if (!string.IsNullOrEmpty(organizationId))
             {
                 var drawing = await _unitOfWork.Drawings.GetByIdAsync(id);
                 ViewBag.BoardType = drawing?.Type ?? "whiteboard";
                 ViewBag.BoardName = drawing?.Name ?? "Untitled Board";
+                ViewBag.IsOrgBoard = true;
             }
             else
             {
                 // For local boards, type is determined client-side
-                ViewBag.BoardType = "local"; 
+                ViewBag.BoardType = "local";
+                ViewBag.IsOrgBoard = false;
             }
 
             return View();

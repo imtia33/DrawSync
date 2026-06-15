@@ -4,7 +4,7 @@
     <div class="view-header">
         <div class="header-text">
             <h2>Team Members</h2>
-            <p class="subtitle" id="membersCounter">Loading workspace members...</p>
+            <p class="subtitle" id="membersCounter">Loading workspace members...<span id="onlineCount" class="online-count" style="display:none"></span></p>
         </div>
         <button id="inviteMemberBtn" class="btn-new-drawing">
             <i class="bi bi-person-plus"></i> Invite Member
@@ -54,11 +54,11 @@
     .data-table td { padding: 20px 24px; font-size: 0.9rem; color: var(--foreground); border-bottom: 1px solid var(--secondary); }
     .data-table tr:last-child td { border-bottom: none; }
     .role-badge { padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; text-transform: capitalize; }
-    .role-admin { background: oklch(from var(--primary) l c h / 0.12); color: var(--primary); }
-    .role-editor { background: oklch(0.9 0.05 350); color: oklch(0.4 0.15 350); }
+    .role-admin { background: hsl(from var(--primary) h s l / 0.12); color: var(--primary); }
+    .role-editor { background: hsl(350 40% 90%); color: hsl(350 60% 40%); }
     .role-member { background: var(--secondary); color: var(--foreground); }
     .btn-remove { background: transparent; border: none; color: var(--destructive); font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; padding: 6px 12px; border-radius: 6px; }
-    .btn-remove:hover { background: oklch(from var(--destructive) l c h / 0.1); }
+    .btn-remove:hover { background: hsl(from var(--destructive) h s l / 0.1); }
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 2000; }
     .modal-card { background: var(--card); padding: 40px; border-radius: 24px; width: 90%; max-width: 440px; box-shadow: var(--shadow-xl); }
     .modal-card h3 { font-size: 1.5rem; font-weight: 800; color: var(--foreground); margin-bottom: 8px; }
@@ -66,16 +66,38 @@
     .form-input-group { margin-bottom: 24px; }
     .form-input-group label { display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--muted-foreground); margin-bottom: 8px; }
     .form-input-group input, .form-input-group select { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; font-size: 1rem; outline: none; background: var(--input-bg); color: var(--foreground); }
-    .form-input-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px oklch(from var(--ring) l c h / 0.15); }
+    .form-input-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px hsl(from var(--ring) h s l / 0.15); }
     .modal-footer-btns { display: flex; gap: 12px; margin-top: 32px; }
     .btn-cancel { flex: 1; padding: 14px; background: var(--secondary); border: none; border-radius: var(--radius); font-weight: 700; color: var(--foreground); cursor: pointer; }
     .btn-submit { flex: 2; padding: 14px; background: var(--primary); border: none; border-radius: var(--radius); font-weight: 700; color: var(--primary-foreground); cursor: pointer; }
+    .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+    .status-online { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.5); }
+    .status-offline { background: #6b7280; opacity: 0.5; }
+    .online-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; font-weight: 600; padding: 3px 8px; border-radius: 100px; }
+    .online-badge.online { background: rgba(16,185,129,0.12); color: #10b981; }
+    .online-badge.offline { background: var(--secondary); color: var(--muted-foreground); }
+    .online-count { font-size: 0.85rem; color: #10b981; font-weight: 600; margin-left: 8px; }
 </style>
 
 <script>
 (function() {
     const orgId = '@Model.Id';
     const apiBase = `/api/organization/${orgId}`;
+    let heartbeatInterval = null;
+
+    // --- Presence Heartbeat ---
+    async function sendHeartbeat() {
+        try {
+            await fetch(`${apiBase}/presence`, { method: 'PUT' });
+        } catch (err) { console.warn('Presence heartbeat failed:', err); }
+    }
+    // Send initial heartbeat and repeat every 30s
+    sendHeartbeat();
+    heartbeatInterval = setInterval(sendHeartbeat, 30000);
+    // Re-send heartbeat when tab regains focus
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) sendHeartbeat(); });
+
+    // --- Invite Modal ---
     document.getElementById('inviteMemberBtn').addEventListener('click', () => { document.getElementById('inviteModal').style.display = 'flex'; });
     document.getElementById('cancelInviteBtn').addEventListener('click', () => { document.getElementById('inviteModal').style.display = 'none'; });
     document.getElementById('inviteForm').addEventListener('submit', async (e) => {
@@ -83,39 +105,84 @@
         const email = document.getElementById('inviteEmail').value;
         const role = document.getElementById('inviteRole').value;
         try {
-            const res = await fetch(`${apiBase}/members/invite`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, roles: [role] }) });
+            const res = await fetch(`${apiBase}/members/invite`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, role }) });
             if (res.ok) { document.getElementById('inviteForm').reset(); document.getElementById('inviteModal').style.display = 'none'; loadMembers(); }
             else { const data = await res.json(); alert('Error: ' + (data.error || 'Failed to invite member')); }
         } catch (err) { alert('Failed to invite member'); }
     });
+
+    // --- Load Members ---
     async function loadMembers() {
         try {
             const res = await fetch(`${apiBase}/members`);
             const data = await res.json();
             const members = data.memberships || [];
             const list = document.getElementById('membersList');
-            if (!members || members.length === 0) { list.innerHTML = '<div class="loading-state"><p>No members found.</p></div>'; }
-            else {
-                let rows = members.map(m => `<tr><td><div style="display:flex;align-items:center;gap:12px"><img src="https://ui-avatars.com/api/?name=${m.email||m.name}&background=6B2020&color=fff" style="width:32px;height:32px;border-radius:50%"><span>${m.email||m.name}</span></div></td><td><span class="role-badge role-${(m.roles||['member'])[0]}">${(m.roles||['member'])[0]}</span></td><td class="subtitle" style="font-size:0.8rem">${new Date(m['$createdAt']).toLocaleDateString()}</td><td><button onclick="removeMember('${m['$id']}')" class="btn-remove">Remove</button></td></tr>`).join('');
-                list.innerHTML = `<table class="data-table"><thead><tr><th>Member</th><th>Role</th><th>Joined</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table>`;
+            if (!members || members.length === 0) {
+                list.innerHTML = '<div class="loading-state"><p>No members found.</p></div>';
+            } else {
+                const onlineTotal = members.filter(m => m.isOnline).length;
+                const onlineEl = document.getElementById('onlineCount');
+                if (onlineTotal > 0) {
+                    onlineEl.textContent = `\u2022 ${onlineTotal} online`;
+                    onlineEl.style.display = 'inline';
+                } else {
+                    onlineEl.style.display = 'none';
+                }
+                let rows = members.map(m => {
+                    const displayName = m.userName || m.userEmail || 'Unknown';
+                    const avatarName = encodeURIComponent(displayName);
+                    const role = (m.roles && m.roles[0]) || 'member';
+                    const statusClass = m.isOnline ? 'online' : 'offline';
+                    const statusText = m.isOnline ? 'Online' : 'Offline';
+                    const createdDate = m.createdAt ? new Date(m.createdAt).toLocaleDateString() : '—';
+                    return `<tr>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:12px">
+                                <div style="position:relative;display:inline-block">
+                                    <img src="https://ui-avatars.com/api/?name=${avatarName}&background=6B2020&color=fff" style="width:36px;height:36px;border-radius:50%">
+                                    <span class="status-dot status-${statusClass}" style="position:absolute;bottom:0;right:0;border:2px solid var(--card)"></span>
+                                </div>
+                                <div>
+                                    <div style="font-weight:600">${displayName}</div>
+                                    ${m.userEmail ? `<div style="font-size:0.75rem;color:var(--muted-foreground)">${m.userEmail}</div>` : ''}
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="role-badge role-${role}">${role}</span></td>
+                        <td><span class="online-badge ${statusClass}"><span class="status-dot status-${statusClass}"></span>${statusText}</span></td>
+                        <td class="subtitle" style="font-size:0.8rem">${createdDate}</td>
+                        <td><button onclick="removeMember('${m.id}')" class="btn-remove">Remove</button></td>
+                    </tr>`;
+                }).join('');
+                list.innerHTML = `<table class="data-table"><thead><tr><th>Member</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table>`;
             }
             updateCounter(members.length);
         } catch (err) { console.error('Failed to load members:', err); }
     }
+
     async function updateCounter(count) {
         try {
             const res = await fetch(`${apiBase}/billing`);
             const data = await res.json();
-            document.getElementById('membersCounter').textContent = `Organization Workspace: ${count} of ${data.limits.members} active members`;
+            const counterEl = document.getElementById('membersCounter');
+            const base = `Organization Workspace: ${count} of ${data.limits.members} active members`;
+            // Preserve the online count span
+            const onlineSpan = counterEl.querySelector('#onlineCount');
+            counterEl.childNodes[0].textContent = base;
             const btn = document.getElementById('inviteMemberBtn');
             if (count >= data.limits.members) { btn.disabled = true; btn.style.opacity = '0.5'; btn.title = 'Member limit reached'; }
         } catch (err) { console.error(err); }
     }
+
     window.removeMember = async function(id) {
         if (confirm('Are you sure you want to remove this member?')) {
             try { await fetch(`${apiBase}/members/${id}`, { method: 'DELETE' }); loadMembers(); } catch (err) { alert('Failed to remove member'); }
         }
     }
+
     loadMembers();
+    // Refresh members list every 30s to pick up presence changes
+    setInterval(loadMembers, 30000);
 })();
 </script>

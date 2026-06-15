@@ -7,6 +7,7 @@ using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Usage = DrawSync.Models.Usage;
 
 namespace DrawSync.Repositories.Application
 {

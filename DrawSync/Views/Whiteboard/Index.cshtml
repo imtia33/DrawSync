@@ -192,7 +192,7 @@
     .search-wrapper { flex: 1; position: relative; }
     .search-wrapper i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--muted-foreground); }
     .search-wrapper input { width: 100%; padding: 14px 14px 14px 48px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--foreground); font-size: 0.95rem; outline: none; transition: all 0.2s; }
-    .search-wrapper input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px oklch(from var(--ring) l c h / 0.15); }
+    .search-wrapper input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px hsl(from var(--ring) h s l / 0.15); }
 
     .sort-wrapper { position: relative; min-width: 180px; }
     .sort-wrapper select { width: 100%; padding: 14px 40px 14px 16px; background: var(--sidebar); color: var(--sidebar-foreground); border: none; border-radius: 10px; appearance: none; font-weight: 500; font-size: 0.9rem; cursor: pointer; }
@@ -205,7 +205,7 @@
     .boards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 32px; }
     .board-card { background: var(--sidebar); border-radius: 16px; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; border: 1px solid var(--sidebar-border); position: relative; }
     .board-card:hover { transform: translateY(-8px); box-shadow: var(--shadow-xl); border-color: var(--sidebar-accent); }
-    .card-thumbnail { height: 160px; background: oklch(from var(--sidebar) calc(l - 0.05) c h); position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .card-thumbnail { height: 160px; background: hsl(from var(--sidebar) h s calc(l - 5%)); position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
     .preview-placeholder { width: 60%; height: 60%; border: 2px dashed var(--sidebar-border); border-radius: 8px; }
     .card-footer { padding: 20px; position: relative; }
     .card-footer h3 { color: var(--sidebar-foreground); font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -230,17 +230,17 @@
     .action-item { width: 100%; padding: 10px 14px; border: none; background: transparent; display: flex; align-items: center; gap: 10px; font-size: 0.8rem; font-weight: 600; color: var(--foreground); cursor: pointer; transition: all 0.2s; }
     .action-item:hover { background: var(--secondary); }
     .action-item.delete { color: var(--destructive); }
-    .action-item.delete:hover { background: oklch(from var(--destructive) l c h / 0.1); }
+    .action-item.delete:hover { background: hsl(from var(--destructive) h s l / 0.1); }
 
     /* Modal Overlay & Card */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; z-index: 2000; animation: fadeIn 0.3s ease; }
     .modal-card { background: var(--card); width: 100%; max-width: 440px; padding: 40px; border-radius: 24px; box-shadow: var(--shadow-xl); border: 1px solid var(--border); animation: modalScale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
     
     /* Confirmation Specific Styles */
-    .confirmation-card { text-align: center; border-color: oklch(from var(--destructive) l c h / 0.3); }
-    .alert-icon { width: 64px; height: 64px; background: oklch(from var(--destructive) l c h / 0.1); color: var(--destructive); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 24px; }
+    .confirmation-card { text-align: center; border-color: hsl(from var(--destructive) h s l / 0.3); }
+    .alert-icon { width: 64px; height: 64px; background: hsl(from var(--destructive) h s l / 0.1); color: var(--destructive); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 24px; }
     .btn-danger-custom { background: var(--destructive) !important; color: var(--destructive-foreground) !important; }
-    .btn-danger-custom:hover { background: oklch(from var(--destructive) calc(l - 0.05) c h) !important; }
+    .btn-danger-custom:hover { background: hsl(from var(--destructive) h s calc(l - 5%)) !important; }
 
     .modal-card h3 { font-weight: 800; font-size: 1.5rem; color: var(--foreground); margin-bottom: 8px; }
     .modal-sub { color: var(--muted-foreground); font-size: 0.95rem; margin-bottom: 32px; line-height: 1.5; }
@@ -249,7 +249,7 @@
     .form-input-group input:focus { border-color: var(--primary); }
     .modal-footer { display: flex; gap: 12px; margin-top: 32px; }
     .btn-cancel { flex: 1; padding: 14px; background: var(--secondary); border: none; border-radius: 10px; font-weight: 600; color: var(--foreground); cursor: pointer; transition: all 0.2s; }
-    .btn-cancel:hover { background: oklch(from var(--secondary) calc(l - 0.02) c h); }
+    .btn-cancel:hover { background: hsl(from var(--secondary) h s calc(l - 3%)); }
     .btn-submit { flex: 1.5; padding: 14px; background: var(--primary); border: none; border-radius: 10px; font-weight: 600; color: var(--primary-foreground); cursor: pointer; transition: all 0.2s; }
     .btn-submit:hover { background: var(--primary-hover); }
 
@@ -272,7 +272,7 @@
     .type-card span { font-weight: 600; font-size: 0.85rem; color: var(--muted-foreground); }
     .type-option input:checked + .type-card { 
         border-color: var(--primary); 
-        background: oklch(from var(--primary) l c h / 0.1); 
+        background: hsl(from var(--primary) h s l / 0.1); 
     }
     .type-option input:checked + .type-card i { color: var(--primary); }
     .type-option input:checked + .type-card span { color: var(--primary); }

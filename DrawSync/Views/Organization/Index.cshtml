@@ -66,8 +66,8 @@
     .org-selection-wrapper {
         padding: 80px 20px;
         min-height: calc(100vh - 70px);
-        background: radial-gradient(circle at top right, oklch(from var(--primary) l c h / 0.05), transparent 400px),
-                    radial-gradient(circle at bottom left, oklch(from var(--primary) l c h / 0.03), transparent 300px);
+        background: radial-gradient(circle at top right, hsl(from var(--primary) h s l / 0.05), transparent 400px),
+                    radial-gradient(circle at bottom left, hsl(from var(--primary) h s l / 0.03), transparent 300px);
     }
 
     .selection-container {
@@ -156,9 +156,9 @@
     }
 
     .org-badge.pro {
-        background: oklch(from var(--primary) l c h / 0.1);
+        background: hsl(from var(--primary) h s l / 0.1);
         color: var(--primary);
-        border: 1px solid oklch(from var(--primary) l c h / 0.2);
+        border: 1px solid hsl(from var(--primary) h s l / 0.2);
     }
 
     .org-badge.free {

@@ -1,5 +1,6 @@
 using Appwrite;
 using Appwrite.Services;
+using DrawSync.Hubs;
 using DrawSync.Models;
 using DrawSync.Repositories.Interface;
 using DrawSync.UnitOfWork.Interface;
@@ -70,6 +71,9 @@ builder.Services.AddScoped<DrawSync.Repositories.Interface.IUsageRepository, Dra
 // Register Unit of Work
 builder.Services.AddScoped<DrawSync.UnitOfWork.Interface.IUnitOfWork, DrawSync.UnitOfWork.Application.UnitOfWork>();
 
+// Register SignalR
+builder.Services.AddSignalR();
+
 // Admin Teams service (uses API key if configured)
 builder.Services.AddScoped(sp => {
     var config = sp.GetRequiredService<IConfiguration>();
@@ -80,6 +84,18 @@ builder.Services.AddScoped(sp => {
     var apiKey = config["Appwrite:ApiKey"];
     if (!string.IsNullOrEmpty(apiKey)) adminClient.SetKey(apiKey);
     return new Teams(adminClient);
+});
+
+// Admin Presences service (uses API key for reading/upserting presence data)
+builder.Services.AddScoped(sp => {
+    var config = sp.GetRequiredService<IConfiguration>();
+    var adminClient = new Client();
+    adminClient
+        .SetEndpoint(config["Appwrite:Endpoint"]!)
+        .SetProject(config["Appwrite:Project"]!);
+    var apiKey = config["Appwrite:ApiKey"];
+    if (!string.IsNullOrEmpty(apiKey)) adminClient.SetKey(apiKey);
+    return new Presences(adminClient);
 });
 
 // Configure Authentication
@@ -113,6 +129,9 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Map SignalR Hubs
+app.MapHub<DrawingHub>("/hubs/drawing");
 
 app.MapControllerRoute(
     name: "default",

@@ -9,7 +9,7 @@
   --bg-header: var(--card, #ffffff);
   --border-color: var(--border, #e5e7eb);
   --accent-color: var(--primary, #4f46e5);
-  --accent-soft: oklch(from var(--primary, oklch(0.38 0.15 18.62)) l c h / 0.1);
+  --accent-soft: hsl(from var(--primary, hsl(0 0% 18%)) h s l / 0.1);
   --text-main: var(--foreground, #111827);
   --text-muted: var(--muted-foreground, #6b7280);
   --radius-md: 8px;
@@ -857,7 +857,9 @@ body.whiteboard-page footer {
   border-radius: 6px;
   font-size: 0.8rem;
   margin-right: 6px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
   flex-shrink: 0;
   transition: transform 0.1s;
   pointer-events: auto;
