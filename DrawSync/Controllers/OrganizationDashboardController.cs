@@ -158,12 +158,18 @@ namespace DrawSync.Controllers
                     );
                     foreach (var p in presences.Presences)
                     {
-                        // Check if this presence has permission for this team
-                        // (we set Role.Team(orgId) when upserting)
-                        onlineUserIds.Add(p.UserId);
+                        // Check if this presence belongs to the current organization
+                        if (p.Id.StartsWith($"{organizationId}_"))
+                        {
+                            onlineUserIds.Add(p.UserId);
+                        }
                     }
                 }
-                catch { /* Presences may not be configured — continue without online status */ }
+                catch (Exception ex)
+                {
+                    // Log warning/error (e.g., if API key lacks "presences.read" scope)
+                    Console.WriteLine($"[Warning] Failed to fetch online presences: {ex.Message}");
+                }
 
                 // Enrich memberships with online status
                 var enrichedMembers = teamMembers.Memberships.Select(m => new
