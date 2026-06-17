@@ -20,13 +20,13 @@ namespace DrawSync.Controllers
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly Teams _teams;
-        private readonly Presences _presences;
+        private readonly Account _account;
 
-        public OrganizationDashboardController(IUnitOfWork unitOfWork, Teams teams, Presences presences)
+        public OrganizationDashboardController(IUnitOfWork unitOfWork, Teams teams, Account account)
         {
             _unitOfWork = unitOfWork;
             _teams = teams;
-            _presences = presences;
+            _account = account;
         }
 
         private string? GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -138,7 +138,7 @@ namespace DrawSync.Controllers
             return NoContent();
         }
 
-        // Members - List (with online presence)
+        // Members - List
         [HttpGet("members")]
         public async Task<ActionResult> ListMembers(string organizationId)
         {
@@ -149,29 +149,7 @@ namespace DrawSync.Controllers
             {
                 var teamMembers = await _teams.ListMemberships(organizationId);
 
-                // Fetch active presences for this team
-                var onlineUserIds = new HashSet<string>();
-                try
-                {
-                    var presences = await _presences.List(
-                        queries: new List<string> { Query.Equal("status", "online") }
-                    );
-                    foreach (var p in presences.Presences)
-                    {
-                        // Check if this presence belongs to the current organization
-                        if (p.Id.StartsWith($"{organizationId}_"))
-                        {
-                            onlineUserIds.Add(p.UserId);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // Log warning/error (e.g., if API key lacks "presences.read" scope)
-                    Console.WriteLine($"[Warning] Failed to fetch online presences: {ex.Message}");
-                }
-
-                // Enrich memberships with online status
+                // Enrich memberships
                 var enrichedMembers = teamMembers.Memberships.Select(m => new
                 {
                     m.Id,
@@ -181,8 +159,7 @@ namespace DrawSync.Controllers
                     m.Roles,
                     Confirm = m.Confirm,
                     m.Mfa,
-                    CreatedAt = m.CreatedAt,
-                    IsOnline = onlineUserIds.Contains(m.UserId)
+                    CreatedAt = m.CreatedAt
                 }).ToList();
 
                 return Ok(new { memberships = enrichedMembers, total = enrichedMembers.Count });
@@ -193,41 +170,19 @@ namespace DrawSync.Controllers
             }
         }
 
-        // Presence - Heartbeat (upsert user presence)
-        [HttpPut("presence")]
-        public async Task<IActionResult> UpsertPresence(string organizationId)
+        // Get fresh JWT token for client-side Appwrite calls
+        [HttpGet("jwt")]
+        public async Task<ActionResult> GetJwt(string organizationId)
         {
             if (!await IsUserInOrgAsync(organizationId))
                 return Forbid();
 
-            var userId = GetUserId();
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized();
-
             try
             {
-                var userName = User.Identity?.Name ?? "Unknown";
-                var presenceId = $"{organizationId}_{userId}";
-
-                await _presences.Upsert(
-                    presenceId: presenceId,
-                    userId: userId,
-                    status: "online",
-                    permissions: new List<string>
-                    {
-                        Permission.Read(Role.Team(organizationId))
-                    },
-                    expiresAt: DateTime.UtcNow.AddMinutes(2).ToString("o"),
-                    metadata: new Dictionary<string, object>
-                    {
-                        { "userName", userName },
-                        { "organizationId", organizationId }
-                    }
-                );
-
-                return Ok(new { status = "online" });
+                var jwtObj = await _account.CreateJWT();
+                return Ok(new { jwt = jwtObj.Jwt });
             }
-            catch (AppwriteException ex)
+            catch (Exception ex)
             {
                 return BadRequest(new { error = ex.Message });
             }

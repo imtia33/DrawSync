@@ -1,4 +1,5 @@
 @model DrawSync.Models.Organization
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 
 <div class="tab-view-container">
     <div class="view-header">
@@ -85,14 +86,131 @@
 (function() {
     const orgId = '@Model.Id';
     const apiBase = `/api/organization/${orgId}`;
+    
+    const appwriteEndpoint = '@Configuration["Appwrite:Endpoint"]';
+    const appwriteProject = '@Configuration["Appwrite:Project"]';
+    const currentUserId = '@User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value';
+    const currentUserName = '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(User.Identity?.Name ?? "Unknown"))';
+    
+    let appwriteJwt = '@ViewBag.AppwriteJwt';
     let heartbeatInterval = null;
 
-    // --- Presence Heartbeat ---
-    async function sendHeartbeat() {
+    // Helper to refresh JWT token if expired
+    async function refreshJwt() {
         try {
-            await fetch(`${apiBase}/presence`, { method: 'PUT' });
-        } catch (err) { console.warn('Presence heartbeat failed:', err); }
+            const res = await fetch(`${apiBase}/jwt`);
+            if (res.ok) {
+                const data = await res.json();
+                appwriteJwt = data.jwt;
+                return true;
+            }
+        } catch (err) {
+            console.error('Failed to refresh Appwrite JWT:', err);
+        }
+        return false;
     }
+
+    // --- Presence Heartbeat directly to Appwrite ---
+    async function sendHeartbeat() {
+        if (!appwriteJwt) {
+            await refreshJwt();
+        }
+        if (!appwriteJwt) return;
+
+        const presenceId = `${orgId}_${currentUserId}`;
+        const url = `${appwriteEndpoint}/presences/${presenceId}`;
+        
+        const payload = {
+            userId: currentUserId,
+            status: "online",
+            permissions: [
+                `read("team:${orgId}")`
+            ],
+            expiresAt: new Date(Date.now() + 120000).toISOString(),
+            metadata: {
+                userName: currentUserName,
+                organizationId: orgId
+            }
+        };
+
+        try {
+            let res = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Appwrite-Project': appwriteProject,
+                    'X-Appwrite-JWT': appwriteJwt
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.status === 401) {
+                console.log('JWT expired, refreshing...');
+                const refreshed = await refreshJwt();
+                if (refreshed) {
+                    res = await fetch(url, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Appwrite-Project': appwriteProject,
+                            'X-Appwrite-JWT': appwriteJwt
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                }
+            }
+        } catch (err) {
+            console.warn('Presence heartbeat failed:', err);
+        }
+    }
+
+    // --- Fetch Active Presences directly from Appwrite ---
+    async function fetchOnlinePresences() {
+        if (!appwriteJwt) {
+            await refreshJwt();
+        }
+        if (!appwriteJwt) return new Set();
+
+        const url = `${appwriteEndpoint}/presences?queries[]=equal("status", "online")`;
+        try {
+            let res = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Appwrite-Project': appwriteProject,
+                    'X-Appwrite-JWT': appwriteJwt
+                }
+            });
+
+            if (res.status === 401) {
+                const refreshed = await refreshJwt();
+                if (refreshed) {
+                    res = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'X-Appwrite-Project': appwriteProject,
+                            'X-Appwrite-JWT': appwriteJwt
+                        }
+                    });
+                }
+            }
+
+            if (res.ok) {
+                const data = await res.json();
+                const activeIds = new Set();
+                const list = data.presences || [];
+                for (const p of list) {
+                    if (p.id.startsWith(`${orgId}_`)) {
+                        activeIds.add(p.userId);
+                    }
+                }
+                return activeIds;
+            }
+        } catch (err) {
+            console.warn('Failed to fetch online presences from Appwrite:', err);
+        }
+        return new Set();
+    }
+
     // Send initial heartbeat and repeat every 30s
     sendHeartbeat();
     heartbeatInterval = setInterval(sendHeartbeat, 30000);
@@ -123,7 +241,8 @@
             if (!members || members.length === 0) {
                 list.innerHTML = '<div class="loading-state"><p>No members found.</p></div>';
             } else {
-                const onlineTotal = members.filter(m => m.isOnline).length;
+                const onlineUserIds = await fetchOnlinePresences();
+                const onlineTotal = members.filter(m => onlineUserIds.has(m.userId)).length;
                 const onlineEl = document.getElementById('onlineCount');
                 if (onlineTotal > 0) {
                     onlineEl.textContent = `\u2022 ${onlineTotal} online`;
@@ -135,8 +254,9 @@
                     const displayName = m.userName || m.userEmail || 'Unknown';
                     const avatarName = encodeURIComponent(displayName);
                     const role = (m.roles && m.roles[0]) || 'member';
-                    const statusClass = m.isOnline ? 'online' : 'offline';
-                    const statusText = m.isOnline ? 'Online' : 'Offline';
+                    const isOnline = onlineUserIds.has(m.userId);
+                    const statusClass = isOnline ? 'online' : 'offline';
+                    const statusText = isOnline ? 'Online' : 'Offline';
                     const createdDate = m.createdAt ? new Date(m.createdAt).toLocaleDateString() : '—';
                     return `<tr>
                         <td>

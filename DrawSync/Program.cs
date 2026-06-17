@@ -86,17 +86,6 @@ builder.Services.AddScoped(sp => {
     return new Teams(adminClient);
 });
 
-// Admin Presences service (uses API key for reading/upserting presence data)
-builder.Services.AddScoped(sp => {
-    var config = sp.GetRequiredService<IConfiguration>();
-    var adminClient = new Client();
-    adminClient
-        .SetEndpoint(config["Appwrite:Endpoint"]!)
-        .SetProject(config["Appwrite:Project"]!);
-    var apiKey = config["Appwrite:ApiKey"];
-    if (!string.IsNullOrEmpty(apiKey)) adminClient.SetKey(apiKey);
-    return new Presences(adminClient);
-});
 
 // Configure Authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
