@@ -9,8 +9,8 @@
   --popover-foreground: hsl(0 0% 11.7647%);
   --primary: hsl(0 0% 18.0392%);
   --primary-foreground: hsl(52 23.0769% 87.2549%);
-  --secondary: hsl(42 20.4082% 80.7843%);
-  --secondary-foreground: hsl(0 0% 18.0392%);
+  --secondary: hsl(0 0% 8%);
+  --secondary-foreground: hsl(0 0% 95%);
   --muted: hsl(41.7391 19.3277% 76.6667%);
   --muted-foreground: hsl(40 6.8182% 34.5098%);
   --accent: hsl(52 23.0769% 87.2549%);
@@ -212,9 +212,9 @@ header {
    Dark Mode Toggle
    ============================================ */
 .theme-toggle-btn {
-  background: var(--secondary);
-  border: 1px solid var(--border);
-  color: var(--muted-foreground);
+  background: #0a0a0a;
+  border: 1px solid #0a0a0a;
+  color: #ffffff;
   width: 38px;
   height: 38px;
   border-radius: 10px;
@@ -222,15 +222,24 @@ header {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: opacity 0.2s ease;
   font-size: 1.1rem;
 }
 
 .theme-toggle-btn:hover {
+  opacity: 0.85;
+}
+
+html.dark .theme-toggle-btn {
+  background: var(--secondary);
+  border-color: var(--border);
+  color: var(--muted-foreground);
+}
+html.dark .theme-toggle-btn:hover {
+  opacity: 1;
   background: var(--primary);
   color: var(--primary-foreground);
   border-color: var(--primary);
-  transform: rotate(15deg);
 }
 
 /* ============================================
@@ -328,55 +337,71 @@ header {
    ============================================ */
 .btn-primary-custom {
   display: inline-block;
-  background: linear-gradient(
-    135deg,
-    var(--primary) 0%,
-    var(--primary-hover) 100%
-  );
-  color: var(--primary-foreground);
+  background: #0a0a0a;
+  color: #ffffff;
   border: none;
   border-radius: var(--radius);
   padding: 0.85rem 2.5rem;
   font-weight: 700;
   font-size: 0.95rem;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.2s ease;
   text-align: center;
   text-decoration: none;
   box-shadow: var(--shadow-md);
 }
 
 .btn-primary-custom:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: var(--shadow-xl);
-  background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
-  color: var(--primary-foreground) !important;
+  opacity: 0.85;
+  color: #ffffff !important;
 }
 
 .btn-primary-custom:active {
-  transform: translateY(-1px);
+  opacity: 0.75;
+}
+
+/* Dark mode – restore theme colours */
+html.dark .btn-primary-custom {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+html.dark .btn-primary-custom:hover {
+  opacity: 1;
+  background: var(--primary-hover);
+  color: var(--primary-foreground) !important;
+  box-shadow: var(--shadow-xl);
 }
 
 .btn-outline-custom {
   display: inline-block;
-  background: transparent;
-  color: var(--foreground);
-  border: 1px solid var(--border);
+  background: #0a0a0a;
+  color: #ffffff;
+  border: 1px solid #0a0a0a;
   border-radius: var(--radius);
   padding: 0.85rem 2.5rem;
   font-weight: 700;
   font-size: 0.95rem;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.2s ease;
   text-align: center;
   text-decoration: none;
 }
 
 .btn-outline-custom:hover {
+  opacity: 0.85;
+  color: #ffffff !important;
+}
+
+html.dark .btn-outline-custom {
+  background: transparent;
+  color: var(--foreground);
+  border-color: var(--border);
+}
+html.dark .btn-outline-custom:hover {
+  opacity: 1;
   background: var(--card);
   color: var(--primary) !important;
   border-color: var(--primary);
-  transform: translateY(-3px);
   box-shadow: var(--shadow-lg);
 }
 
@@ -393,18 +418,28 @@ header {
    Logout Button
    ============================================ */
 .btn-logout-small {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--muted-foreground);
+  background: #0a0a0a;
+  border: 1px solid #0a0a0a;
+  color: #ffffff;
   padding: 4px 12px;
   border-radius: 8px;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: opacity 0.2s;
 }
 
 .btn-logout-small:hover {
+  opacity: 0.85;
+}
+
+html.dark .btn-logout-small {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--muted-foreground);
+}
+html.dark .btn-logout-small:hover {
+  opacity: 1;
   background: var(--secondary);
   color: var(--foreground);
   border-color: var(--primary);
@@ -627,23 +662,32 @@ html.dark .alert-danger {
   justify-content: center;
   gap: 0.75rem;
   width: 100%;
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: #0a0a0a;
+  border: 1px solid #0a0a0a;
   border-radius: var(--radius);
   padding: 0.8rem 1rem;
-  color: var(--foreground) !important;
+  color: #ffffff !important;
   font-weight: 600;
   font-size: 0.95rem;
   text-decoration: none;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.2s ease;
   box-shadow: var(--shadow-sm);
 }
 
 .btn-google-custom:hover {
+  opacity: 0.85;
+}
+
+html.dark .btn-google-custom {
+  background: var(--card);
+  border-color: var(--border);
+  color: var(--foreground) !important;
+}
+html.dark .btn-google-custom:hover {
+  opacity: 1;
   background: var(--secondary);
   border-color: var(--primary);
-  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 

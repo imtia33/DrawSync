@@ -64,9 +64,9 @@
         }
 
         function getParticleColor() {
-            // Read the current --primary color from CSS and use it for particles
+            // Use black tones for particles in both modes
             const isDark = document.documentElement.classList.contains('dark');
-            return isDark ? 'rgba(180, 60, 60, 0.6)' : 'rgba(100, 30, 30, 0.5)';
+            return isDark ? 'rgba(220, 220, 220, 0.45)' : 'rgba(0, 0, 0, 0.35)';
         }
 
         class Particle {
@@ -118,9 +118,9 @@
 
             const isDark = document.documentElement.classList.contains('dark');
             
-            // Neon Palette (Using theme burgundy as base)
-            const neonColor = isDark ? '255, 45, 85' : '180, 20, 60';
-            const coreColor = '255, 255, 255';
+            // Neon Palette (Black / near-black for rocket glow effect)
+            const neonColor = isDark ? '200, 200, 200' : '0, 0, 0';
+            const coreColor = isDark ? '255, 255, 255' : '80, 80, 80';
 
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
