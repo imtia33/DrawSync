@@ -6,8 +6,8 @@
 
 <div class="d-flex align-items-center justify-content-center" style="min-height: 80vh;">
     <div class="text-center">
-        <h1 id="revealTitle" class="display-1 fw-bold mb-6" style="font-family: 'Syncopate', sans-serif; letter-spacing: -4px; line-height: 0.9; opacity: 0; color: var(--foreground);">
-            DRAW<br/><span style="color: var(--primary)">SYNC</span>
+        <h1 id="revealTitle" class="display-1 fw-bold mb-6" style="font-family: 'Syncopate', sans-serif; letter-spacing: -4px; line-height: 0.9; opacity: 0; color: #000;">
+            DRAW<br/><span style="color: #000 !important">SYNC</span>
         </h1>
         <p class="mb-8" style="max-width: 500px; margin: 0 auto; font-size: 1.1rem; line-height: 1.6; animation: fadeIn 1s ease 1s forwards; opacity: 0; color: var(--muted-foreground);">
             The real-time collaborative canvas for modern teams. Simple. Fast. Powerful.
@@ -213,8 +213,7 @@
                 span.textContent = char;
                 span.className = 'reveal-char';
                 span.style.animationDelay = `${i * 0.1}s`;
-                if (i >= 4) span.style.color = 'var(--primary)';
-                else span.style.color = 'var(--foreground)';
+                span.style.color = '#000';
                 if (i === 4) title.appendChild(document.createElement('br'));
                 title.appendChild(span);
             });

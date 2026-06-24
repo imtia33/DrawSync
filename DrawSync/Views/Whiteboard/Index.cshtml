@@ -151,13 +151,13 @@
         font-family: var(--font-sans);
     }
 
-    /* Navbar */
+    /* Navbar — always black */
     .dashboard-navbar {
         position: fixed;
         top: 0; left: 0; right: 0;
         height: 70px;
-        background: var(--card);
-        border-bottom: 1px solid var(--border);
+        background: #000;
+        border-bottom: 1px solid #222;
         z-index: 1000;
         display: flex;
         align-items: center;
@@ -165,17 +165,17 @@
 
     .nav-container { width: 100%; max-width: 1280px; margin: 0 auto; padding: 0 24px; display: flex; justify-content: space-between; align-items: center; }
     .nav-left { display: flex; align-items: center; gap: 40px; }
-    .brand { font-family: 'Syncopate', sans-serif; font-weight: 700; font-size: 1.1rem; letter-spacing: -1px; color: var(--foreground); }
-    .brand-accent { color: var(--primary); }
+    .brand { font-family: 'Syncopate', sans-serif; font-weight: 700; font-size: 1.1rem; letter-spacing: -1px; color: #fff; }
+    .brand-accent { color: #fff; }
     .nav-links { display: flex; gap: 24px; }
-    .nav-links a { text-decoration: none; color: var(--muted-foreground); font-weight: 500; font-size: 0.95rem; transition: all 0.2s; position: relative; }
-    .nav-links a:hover { color: var(--foreground); }
-    .nav-links a.active { color: var(--primary); font-weight: 600; }
-    .nav-links a.active::after { content: ''; position: absolute; bottom: -24px; left: 0; width: 100%; height: 2px; background: var(--primary); }
+    .nav-links a { text-decoration: none; color: rgba(255,255,255,0.6); font-weight: 500; font-size: 0.95rem; transition: all 0.2s; position: relative; }
+    .nav-links a:hover { color: #fff; }
+    .nav-links a.active { color: #fff; font-weight: 600; }
+    .nav-links a.active::after { content: ''; position: absolute; bottom: -24px; left: 0; width: 100%; height: 2px; background: #fff; }
     .nav-right { display: flex; align-items: center; gap: 16px; }
     .user-profile { display: flex; align-items: center; gap: 10px; }
     .avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
-    .user-name { font-weight: 600; font-size: 0.95rem; color: var(--foreground); }
+    .user-name { font-weight: 600; font-size: 0.95rem; color: #fff; }
 
     /* Hero Header */
     .hero-header { background: var(--sidebar); padding: 120px 0 60px; text-align: left; }
@@ -198,21 +198,21 @@
     .sort-wrapper select { width: 100%; padding: 14px 40px 14px 16px; background: var(--sidebar); color: var(--sidebar-foreground); border: none; border-radius: 10px; appearance: none; font-weight: 500; font-size: 0.9rem; cursor: pointer; }
     .select-icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: var(--sidebar-foreground); pointer-events: none; }
 
-    .btn-new-board { background: var(--primary); color: var(--primary-foreground); border: none; padding: 0 24px; height: 52px; border-radius: 10px; font-weight: 600; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
-    .btn-new-board:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    .btn-new-board { background: #000; color: #fff; border: none; padding: 0 24px; height: 52px; border-radius: 10px; font-weight: 600; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+    .btn-new-board:hover { background: #222; transform: translateY(-2px); box-shadow: var(--shadow-lg); }
 
     /* Grid & Cards */
     .boards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 32px; }
-    .board-card { background: var(--sidebar); border-radius: 16px; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; border: 1px solid var(--sidebar-border); position: relative; }
-    .board-card:hover { transform: translateY(-8px); box-shadow: var(--shadow-xl); border-color: var(--sidebar-accent); }
-    .card-thumbnail { height: 160px; background: hsl(from var(--sidebar) h s calc(l - 5%)); position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-    .preview-placeholder { width: 60%; height: 60%; border: 2px dashed var(--sidebar-border); border-radius: 8px; }
+    .board-card { background: #0a0a0a; border-radius: 16px; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; border: 1px solid #222; position: relative; }
+    .board-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0,0,0,0.5); border-color: #555; }
+    .card-thumbnail { height: 160px; background: #111; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .preview-placeholder { width: 60%; height: 60%; border: 2px dashed #333; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
     .card-footer { padding: 20px; position: relative; }
-    .card-footer h3 { color: var(--sidebar-foreground); font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-footer h3 { color: #fff; font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .card-meta { display: flex; flex-direction: column; gap: 6px; }
-    .meta-item { display: flex; align-items: center; gap: 8px; color: var(--muted-foreground); font-size: 0.8rem; }
-    .btn-kebab { position: absolute; top: 20px; right: 15px; background: transparent; border: none; color: var(--muted-foreground); cursor: pointer; font-size: 1.25rem; padding: 4px; border-radius: 6px; transition: all 0.2s; z-index: 10; }
-    .btn-kebab:hover { background: var(--sidebar-accent); color: var(--sidebar-foreground); }
+    .meta-item { display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.5); font-size: 0.8rem; }
+    .btn-kebab { position: absolute; top: 20px; right: 15px; background: transparent; border: none; color: rgba(255,255,255,0.4); cursor: pointer; font-size: 1.25rem; padding: 4px; border-radius: 6px; transition: all 0.2s; z-index: 10; }
+    .btn-kebab:hover { background: rgba(255,255,255,0.1); color: #fff; }
 
     /* Action Menu Dropdown */
     .action-menu { 
@@ -248,8 +248,8 @@
     .form-input-group input { width: 100%; padding: 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 1rem; outline: none; transition: border-color 0.2s; background: var(--input-bg); color: var(--foreground); }
     .form-input-group input:focus { border-color: var(--primary); }
     .modal-footer { display: flex; gap: 12px; margin-top: 32px; }
-    .btn-cancel { flex: 1; padding: 14px; background: var(--secondary); border: none; border-radius: 10px; font-weight: 600; color: var(--foreground); cursor: pointer; transition: all 0.2s; }
-    .btn-cancel:hover { background: hsl(from var(--secondary) h s calc(l - 3%)); }
+    .btn-cancel { flex: 1; padding: 14px; background: #000; border: 1px solid #333; border-radius: 10px; font-weight: 600; color: #fff; cursor: pointer; transition: all 0.2s; }
+    .btn-cancel:hover { background: #1a1a1a; }
     .btn-submit { flex: 1.5; padding: 14px; background: var(--primary); border: none; border-radius: 10px; font-weight: 600; color: var(--primary-foreground); cursor: pointer; transition: all 0.2s; }
     .btn-submit:hover { background: var(--primary-hover); }
 
@@ -259,23 +259,23 @@
     .type-option input { display: none; }
     .type-card { 
         padding: 16px; 
-        border: 1px solid var(--border); 
+        border: 1px solid #ddd; 
         border-radius: 12px; 
         display: flex; 
         flex-direction: column; 
         align-items: center; 
         gap: 8px; 
         transition: all 0.2s;
-        background: var(--sidebar);
+        background: #fff;
     }
-    .type-card i { font-size: 1.5rem; color: var(--muted-foreground); }
-    .type-card span { font-weight: 600; font-size: 0.85rem; color: var(--muted-foreground); }
+    .type-card i { font-size: 1.5rem; color: #555; }
+    .type-card span { font-weight: 600; font-size: 0.85rem; color: #333; }
     .type-option input:checked + .type-card { 
-        border-color: var(--primary); 
-        background: hsl(from var(--primary) h s l / 0.1); 
+        border-color: #000; 
+        background: #f5f5f5; 
     }
-    .type-option input:checked + .type-card i { color: var(--primary); }
-    .type-option input:checked + .type-card span { color: var(--primary); }
+    .type-option input:checked + .type-card i { color: #000; }
+    .type-option input:checked + .type-card span { color: #000; }
 
     /* Animations */
     @@keyframes slideDownFade {
@@ -363,12 +363,12 @@
                         <div class="board-card" onclick="window.location.href='${url}'" id="card-${b.id}">
                             <div class="card-thumbnail">
                                 <div class="preview-placeholder">
-                                    <i class="bi ${isMap ? 'bi-map' : 'bi-brush'}" style="font-size: 2rem; color: var(--muted-foreground); opacity: 0.5;"></i>
+                                    <i class="bi ${isMap ? 'bi-map' : 'bi-brush'}" style="font-size: 2rem; color: rgba(255,255,255,0.25);"></i>
                                 </div>
                             </div>
                             <div class="card-footer">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <i class="bi ${isMap ? 'bi-map-fill' : 'bi-brush-fill'}" style="color: ${isMap ? '#3b82f6' : 'var(--primary)'}; font-size: 0.9rem;"></i>
+                                    <i class="bi ${isMap ? 'bi-map-fill' : 'bi-brush-fill'}" style="color: ${isMap ? '#60a5fa' : 'rgba(255,255,255,0.7)'}; font-size: 0.9rem;"></i>
                                     <h3>${b.name}</h3>
                                 </div>
                                 <div class="card-meta">

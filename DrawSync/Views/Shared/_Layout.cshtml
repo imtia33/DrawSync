@@ -35,7 +35,7 @@
                         @if (User.Identity?.IsAuthenticated == true && User.FindFirst("IsVerified")?.Value == "true")
                         {
                             <li class="nav-item">
-                                <a class="nav-link" asp-controller="Whiteboard" asp-action="Index" style="color: var(--primary); font-weight: 600;">Whiteboard</a>
+                                <a class="nav-link" asp-controller="Whiteboard" asp-action="Index" style="color: #fff !important; font-weight: 600;">Whiteboard</a>
                             </li>
                         }
                         <li class="nav-item">
@@ -53,7 +53,7 @@
                         {
                             <li class="nav-item d-flex align-items-center gap-2">
                                 <img src="https://ui-avatars.com/api/?name=@User.Identity.Name&background=6B2020&color=fff" alt="User" style="width: 32px; height: 32px; border-radius: 50%;">
-                                <span class="nav-link" style="color: var(--foreground) !important; font-weight: 600;">@User.Identity.Name</span>
+                                <span class="nav-link" style="color: #fff !important; font-weight: 600;">@User.Identity.Name</span>
                             </li>
                             <li class="nav-item">
                                 <form asp-controller="Auth" asp-action="Logout" method="post" class="form-inline">
@@ -67,7 +67,7 @@
                                 <a class="nav-link" asp-controller="Auth" asp-action="Login">Login</a>
                             </li>
                             <li class="nav-item">
-                                <a asp-controller="Auth" asp-action="Register" class="btn-primary-custom" style="padding: 0.5rem 1.5rem; font-size: 0.85rem;">Register</a>
+                                <a asp-controller="Auth" asp-action="Register" class="btn-primary-custom" style="padding: 0.5rem 1.5rem; font-size: 0.85rem; background: #fff; color: #000; border-color: #fff;">Register</a>
                             </li>
                         }
                     </ul>

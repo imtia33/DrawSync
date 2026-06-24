@@ -1,60 +1,60 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Syncopate:wght@400;700&display=swap");
 
 :root {
-  --background: hsl(42.3529 27.8689% 88.0392%);
-  --foreground: hsl(0 0% 11.7647%);
-  --card: hsl(41.25 42.1053% 92.549%);
-  --card-foreground: hsl(0 0% 11.7647%);
-  --popover: hsl(41.25 42.1053% 92.549%);
-  --popover-foreground: hsl(0 0% 11.7647%);
-  --primary: hsl(0 0% 18.0392%);
-  --primary-foreground: hsl(52 23.0769% 87.2549%);
-  --secondary: hsl(0 0% 8%);
-  --secondary-foreground: hsl(0 0% 95%);
-  --muted: hsl(41.7391 19.3277% 76.6667%);
-  --muted-foreground: hsl(40 6.8182% 34.5098%);
-  --accent: hsl(52 23.0769% 87.2549%);
-  --accent-foreground: hsl(0 0% 18.0392%);
-  --destructive: hsl(0 72.2222% 50.5882%);
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(0 0% 9%);
+  --card: hsl(0 0% 98%);
+  --card-foreground: hsl(0 0% 9%);
+  --popover: hsl(0 0% 98%);
+  --popover-foreground: hsl(0 0% 9%);
+  --primary: hsl(0 0% 100%);
+  --primary-foreground: hsl(0 0% 9%);
+  --secondary: hsl(0 0% 9%);
+  --secondary-foreground: hsl(0 0% 100%);
+  --muted: hsl(0 0% 96%);
+  --muted-foreground: hsl(0 0% 40%);
+  --accent: hsl(0 0% 96%);
+  --accent-foreground: hsl(0 0% 9%);
+  --destructive: hsl(0 72% 51%);
   --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(41.7391 20.354% 77.8431%);
-  --input: hsl(41.7391 20.354% 77.8431%);
-  --ring: hsl(0 0% 18.0392%);
-  --chart-1: hsl(11.1377 86.5285% 62.1569%);
-  --chart-2: hsl(0 0% 11.7647%);
-  --chart-3: hsl(40 6.8182% 34.5098%);
-  --chart-4: hsl(38.4 12.5628% 60.9804%);
-  --chart-5: hsl(41.7391 19.3277% 76.6667%);
-  --sidebar: hsl(42 26.3158% 85.098%);
-  --sidebar-foreground: hsl(0 0% 11.7647%);
-  --sidebar-primary: hsl(0 0% 18.0392%);
-  --sidebar-primary-foreground: hsl(52 23.0769% 87.2549%);
-  --sidebar-accent: hsl(52 23.0769% 87.2549%);
-  --sidebar-accent-foreground: hsl(0 0% 18.0392%);
-  --sidebar-border: hsl(41.7391 20.354% 77.8431%);
-  --sidebar-ring: hsl(0 0% 18.0392%);
+  --border: hsl(0 0% 88%);
+  --input: hsl(0 0% 98%);
+  --ring: hsl(0 0% 9%);
+  --chart-1: hsl(0 0% 9%);
+  --chart-2: hsl(0 0% 40%);
+  --chart-3: hsl(0 0% 60%);
+  --chart-4: hsl(0 0% 80%);
+  --chart-5: hsl(0 0% 90%);
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(0 0% 9%);
+  --sidebar-primary: hsl(0 0% 9%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(0 0% 96%);
+  --sidebar-accent-foreground: hsl(0 0% 9%);
+  --sidebar-border: hsl(0 0% 88%);
+  --sidebar-ring: hsl(0 0% 9%);
 
   /* Shadow system */
   --shadow-color: #000000;
-  --shadow-2xs: 0px 4px 10px 0px hsl(0 0% 0% / 0.05);
-  --shadow-xs: 0px 4px 10px 0px hsl(0 0% 0% / 0.05);
+  --shadow-2xs: 0px 4px 10px 0px hsl(0 0% 0% / 0.03);
+  --shadow-xs: 0px 4px 10px 0px hsl(0 0% 0% / 0.03);
   --shadow-sm:
-    0px 4px 10px 0px hsl(0 0% 0% / 0.1), 0px 1px 2px -1px hsl(0 0% 0% / 0.1);
+    0px 4px 10px 0px hsl(0 0% 0% / 0.05), 0px 1px 2px -1px hsl(0 0% 0% / 0.05);
   --shadow-md:
-    0px 4px 10px 0px hsl(0 0% 0% / 0.1), 0px 2px 4px -1px hsl(0 0% 0% / 0.1);
+    0px 4px 10px 0px hsl(0 0% 0% / 0.05), 0px 2px 4px -1px hsl(0 0% 0% / 0.05);
   --shadow-lg:
-    0px 4px 10px 0px hsl(0 0% 0% / 0.1), 0px 4px 6px -1px hsl(0 0% 0% / 0.1);
+    0px 4px 10px 0px hsl(0 0% 0% / 0.05), 0px 4px 6px -1px hsl(0 0% 0% / 0.05);
   --shadow-xl:
-    0px 4px 10px 0px hsl(0 0% 0% / 0.1), 0px 8px 10px -1px hsl(0 0% 0% / 0.1);
-  --shadow-2xl: 0px 4px 10px 0px hsl(0 0% 0% / 0.25);
+    0px 4px 10px 0px hsl(0 0% 0% / 0.05), 0px 8px 10px -1px hsl(0 0% 0% / 0.05);
+  --shadow-2xl: 0px 4px 10px 0px hsl(0 0% 0% / 0.15);
 
   /* Functional aliases */
-  --primary-hover: hsl(0 0% 25%);
+  --primary-hover: hsl(0 0% 90%);
   --text-main: var(--foreground);
   --text-muted: var(--muted-foreground);
   --card-bg: var(--card);
   --card-border: var(--border);
-  --input-bg: var(--secondary);
+  --input-bg: var(--input);
   --bg-body: var(--background);
 
   /* Radius */
@@ -75,38 +75,38 @@
    Dark Mode Variables
    ============================================ */
 html.dark {
-  --background: hsl(0 0% 7.8431%);
-  --foreground: hsl(38.5714 23.3333% 88.2353%);
-  --card: hsl(0 0% 10.9804%);
-  --card-foreground: hsl(38.5714 23.3333% 88.2353%);
-  --popover: hsl(0 0% 10.9804%);
-  --popover-foreground: hsl(38.5714 23.3333% 88.2353%);
-  --primary: hsl(52.9412 15.5963% 78.6275%);
-  --primary-foreground: hsl(0 0% 21.1765%);
-  --secondary: hsl(0 0% 13.3333%);
-  --secondary-foreground: hsl(52.9412 15.5963% 78.6275%);
-  --muted: hsl(0 0% 16.4706%);
-  --muted-foreground: hsl(38.1818 4.6414% 53.5294%);
-  --accent: hsl(0 0% 21.1765%);
-  --accent-foreground: hsl(52.9412 15.5963% 78.6275%);
-  --destructive: hsl(0 84.2365% 60.1961%);
+  --background: hsl(0 0% 9%);
+  --foreground: hsl(0 0% 100%);
+  --card: hsl(0 0% 12%);
+  --card-foreground: hsl(0 0% 100%);
+  --popover: hsl(0 0% 12%);
+  --popover-foreground: hsl(0 0% 100%);
+  --primary: hsl(0 0% 100%);
+  --primary-foreground: hsl(0 0% 9%);
+  --secondary: hsl(0 0% 9%);
+  --secondary-foreground: hsl(0 0% 100%);
+  --muted: hsl(0 0% 16%);
+  --muted-foreground: hsl(0 0% 63%);
+  --accent: hsl(0 0% 16%);
+  --accent-foreground: hsl(0 0% 100%);
+  --destructive: hsl(0 84% 60%);
   --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(0 0% 17.2549%);
-  --input: hsl(0 0% 17.2549%);
-  --ring: hsl(52.9412 15.5963% 78.6275%);
-  --chart-1: hsl(11.1377 86.5285% 62.1569%);
-  --chart-2: hsl(33.913 23.2323% 80.5882%);
-  --chart-3: hsl(38.1818 4.6414% 53.5294%);
-  --chart-4: hsl(40 3.3708% 34.902%);
-  --chart-5: hsl(0 0% 23.1373%);
-  --sidebar: hsl(0 0% 6.2745%);
-  --sidebar-foreground: hsl(38.5714 23.3333% 88.2353%);
-  --sidebar-primary: hsl(52.9412 15.5963% 78.6275%);
-  --sidebar-primary-foreground: hsl(0 0% 21.1765%);
-  --sidebar-accent: hsl(0 0% 21.1765%);
-  --sidebar-accent-foreground: hsl(52.9412 15.5963% 78.6275%);
-  --sidebar-border: hsl(0 0% 17.2549%);
-  --sidebar-ring: hsl(52.9412 15.5963% 78.6275%);
+  --border: hsl(0 0% 20%);
+  --input: hsl(0 0% 12%);
+  --ring: hsl(0 0% 100%);
+  --chart-1: hsl(0 0% 100%);
+  --chart-2: hsl(0 0% 80%);
+  --chart-3: hsl(0 0% 60%);
+  --chart-4: hsl(0 0% 40%);
+  --chart-5: hsl(0 0% 20%);
+  --sidebar: hsl(0 0% 6%);
+  --sidebar-foreground: hsl(0 0% 100%);
+  --sidebar-primary: hsl(0 0% 100%);
+  --sidebar-primary-foreground: hsl(0 0% 9%);
+  --sidebar-accent: hsl(0 0% 16%);
+  --sidebar-accent-foreground: hsl(0 0% 100%);
+  --sidebar-border: hsl(0 0% 20%);
+  --sidebar-ring: hsl(0 0% 100%);
 
   --shadow-color: #000000;
   --shadow-2xs: 0px 6px 15px 0px hsl(0 0% 0% / 0.15);
@@ -121,7 +121,7 @@ html.dark {
     0px 6px 15px 0px hsl(0 0% 0% / 0.3), 0px 8px 10px -1px hsl(0 0% 0% / 0.3);
   --shadow-2xl: 0px 6px 15px 0px hsl(0 0% 0% / 0.75);
 
-  --primary-hover: hsl(52.9412 20% 85%);
+  --primary-hover: hsl(0 0% 90%);
   --text-main: var(--foreground);
   --text-muted: var(--muted-foreground);
   --card-bg: var(--card);
@@ -157,12 +157,12 @@ header {
 }
 
 /* ============================================
-   Navbar
+   Navbar — always black with white components
    ============================================ */
 .navbar {
-  background: var(--card) !important;
+  background: #000 !important;
   backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid #222;
   padding: 0.75rem 0;
   height: 70px;
   display: flex;
@@ -183,16 +183,16 @@ header {
   text-transform: uppercase;
   letter-spacing: 2px;
   font-size: 1.3rem;
-  color: var(--foreground) !important;
+  color: #fff !important;
   transition: var(--transition);
 }
 
 .navbar-brand span {
-  color: var(--primary);
+  color: #fff;
 }
 
 .nav-link {
-  color: var(--foreground) !important;
+  color: #fff !important;
   font-weight: 500;
   font-size: 0.95rem;
   transition: var(--transition);
@@ -200,21 +200,23 @@ header {
 }
 
 .nav-link:hover {
-  color: var(--primary) !important;
+  color: #ccc !important;
+  opacity: 0.85;
 }
 
 .nav-link.active {
-  color: var(--primary) !important;
+  color: #fff !important;
   font-weight: 600;
+  opacity: 0.75;
 }
 
 /* ============================================
-   Dark Mode Toggle
+   Dark Mode Toggle — white on black navbar
    ============================================ */
 .theme-toggle-btn {
-  background: #0a0a0a;
-  border: 1px solid #0a0a0a;
-  color: #ffffff;
+  background: transparent;
+  border: 1px solid #555;
+  color: #fff;
   width: 38px;
   height: 38px;
   border-radius: 10px;
@@ -222,24 +224,14 @@ header {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: var(--transition);
   font-size: 1.1rem;
 }
 
 .theme-toggle-btn:hover {
-  opacity: 0.85;
-}
-
-html.dark .theme-toggle-btn {
-  background: var(--secondary);
-  border-color: var(--border);
-  color: var(--muted-foreground);
-}
-html.dark .theme-toggle-btn:hover {
-  opacity: 1;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border-color: var(--primary);
+  background: #fff;
+  color: #000;
+  border-color: #fff;
 }
 
 /* ============================================
@@ -337,72 +329,51 @@ html.dark .theme-toggle-btn:hover {
    ============================================ */
 .btn-primary-custom {
   display: inline-block;
-  background: #0a0a0a;
-  color: #ffffff;
-  border: none;
+  background: var(--foreground);
+  color: var(--background);
+  border: 1px solid var(--foreground);
   border-radius: var(--radius);
   padding: 0.85rem 2.5rem;
   font-weight: 700;
   font-size: 0.95rem;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: var(--transition);
   text-align: center;
   text-decoration: none;
   box-shadow: var(--shadow-md);
 }
 
 .btn-primary-custom:hover {
-  opacity: 0.85;
-  color: #ffffff !important;
+  background: var(--background);
+  color: var(--foreground) !important;
+  border-color: var(--foreground);
+  box-shadow: var(--shadow-lg);
 }
 
 .btn-primary-custom:active {
-  opacity: 0.75;
-}
-
-/* Dark mode – restore theme colours */
-html.dark .btn-primary-custom {
-  background: var(--primary);
-  color: var(--primary-foreground);
-}
-html.dark .btn-primary-custom:hover {
-  opacity: 1;
-  background: var(--primary-hover);
-  color: var(--primary-foreground) !important;
-  box-shadow: var(--shadow-xl);
+  opacity: 0.85;
 }
 
 .btn-outline-custom {
   display: inline-block;
-  background: #0a0a0a;
-  color: #ffffff;
-  border: 1px solid #0a0a0a;
+  background: transparent;
+  color: var(--foreground);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 0.85rem 2.5rem;
   font-weight: 700;
   font-size: 0.95rem;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: var(--transition);
   text-align: center;
   text-decoration: none;
 }
 
 .btn-outline-custom:hover {
-  opacity: 0.85;
-  color: #ffffff !important;
-}
-
-html.dark .btn-outline-custom {
-  background: transparent;
-  color: var(--foreground);
-  border-color: var(--border);
-}
-html.dark .btn-outline-custom:hover {
-  opacity: 1;
-  background: var(--card);
-  color: var(--primary) !important;
-  border-color: var(--primary);
-  box-shadow: var(--shadow-lg);
+  background: var(--foreground);
+  color: var(--background) !important;
+  border-color: var(--foreground);
+  box-shadow: var(--shadow-md);
 }
 
 /* ============================================
@@ -415,34 +386,24 @@ html.dark .btn-outline-custom:hover {
 }
 
 /* ============================================
-   Logout Button
+   Logout Button — white style on black navbar
    ============================================ */
 .btn-logout-small {
-  background: #0a0a0a;
-  border: 1px solid #0a0a0a;
-  color: #ffffff;
+  background: transparent;
+  border: 1px solid #555;
+  color: #ccc;
   padding: 4px 12px;
   border-radius: 8px;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: var(--transition);
 }
 
 .btn-logout-small:hover {
-  opacity: 0.85;
-}
-
-html.dark .btn-logout-small {
-  background: transparent;
-  border-color: var(--border);
-  color: var(--muted-foreground);
-}
-html.dark .btn-logout-small:hover {
-  opacity: 1;
-  background: var(--secondary);
-  color: var(--foreground);
-  border-color: var(--primary);
+  background: #fff;
+  color: #000 !important;
+  border-color: #fff;
 }
 
 /* ============================================
@@ -614,7 +575,8 @@ html.dark .text-muted {
   color: var(--muted-foreground) !important;
 }
 
-html.dark .navbar-toggler-icon {
+/* Navbar toggler always white since navbar is always black */
+.navbar-toggler-icon {
   filter: invert(1);
 }
 
@@ -662,33 +624,22 @@ html.dark .alert-danger {
   justify-content: center;
   gap: 0.75rem;
   width: 100%;
-  background: #0a0a0a;
-  border: 1px solid #0a0a0a;
+  background: var(--background);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 0.8rem 1rem;
-  color: #ffffff !important;
+  color: var(--foreground) !important;
   font-weight: 600;
   font-size: 0.95rem;
   text-decoration: none;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: var(--transition);
   box-shadow: var(--shadow-sm);
 }
 
 .btn-google-custom:hover {
-  opacity: 0.85;
-}
-
-html.dark .btn-google-custom {
   background: var(--card);
-  border-color: var(--border);
-  color: var(--foreground) !important;
-}
-html.dark .btn-google-custom:hover {
-  opacity: 1;
-  background: var(--secondary);
-  border-color: var(--primary);
-  box-shadow: var(--shadow-md);
+  border-color: var(--foreground);
 }
 
 .google-icon {
