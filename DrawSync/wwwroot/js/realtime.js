@@ -56,6 +56,7 @@ class RealtimeClient {
       // Start connection
       await this.connection.start();
       this._updateConnectionStatus("connected");
+      console.log('[DEBUG WebSocket] Connected to DrawingHub successfully');
 
       // Join the drawing room
       const result = await this.connection.invoke(
@@ -66,6 +67,7 @@ class RealtimeClient {
       );
 
       if (result && result.success) {
+        console.log('[DEBUG WebSocket] Joined drawing room:', drawingId, 'with color:', result.color);
         this.myColor = result.color;
         this.presence = result.presence || [];
         this._renderPresence();
@@ -78,7 +80,7 @@ class RealtimeClient {
         5000,
       );
     } catch (err) {
-      console.error("SignalR connection failed:", err);
+      console.error("[DEBUG WebSocket] SignalR connection failed:", err);
 
       // Check if it's a "board full" error
       if (err.message && err.message.includes("full")) {
@@ -93,6 +95,7 @@ class RealtimeClient {
    * Disconnect from the hub and leave the drawing room.
    */
   async disconnect() {
+    console.log('[DEBUG WebSocket] Disconnecting from DrawingHub');
     if (this._cursorCleanupInterval) {
       clearInterval(this._cursorCleanupInterval);
       this._cursorCleanupInterval = null;
@@ -121,6 +124,7 @@ class RealtimeClient {
     try {
       // Serialize the element to a plain object
       const elementData = this._serializeElement(element);
+      console.log('[DEBUG WebSocket] Sending element change:', action, elementData);
       await this.connection.invoke(
         "SendElement",
         this.drawingId,
@@ -128,7 +132,7 @@ class RealtimeClient {
         action,
       );
     } catch (err) {
-      console.error("Failed to send element:", err);
+      console.error("[DEBUG WebSocket] Failed to send element:", err);
     }
   }
 
@@ -142,6 +146,7 @@ class RealtimeClient {
     if (now - this._lastCursorSend < this._cursorSendInterval) return;
     this._lastCursorSend = now;
 
+    console.log('[DEBUG WebSocket] Sending cursor position:', x, y);
     this.connection.invoke("SendCursor", this.drawingId, { x, y }).catch(() => {
       // Silently ignore cursor send failures
     });
@@ -154,9 +159,10 @@ class RealtimeClient {
     if (!this.isConnected || !this.connection) return;
 
     try {
+      console.log('[DEBUG WebSocket] Sending board clear event');
       await this.connection.invoke("SendClear", this.drawingId);
     } catch (err) {
-      console.error("Failed to send clear:", err);
+      console.error("[DEBUG WebSocket] Failed to send clear:", err);
     }
   }
 
@@ -167,9 +173,10 @@ class RealtimeClient {
     if (!this.isConnected || !this.connection) return;
 
     try {
+      console.log('[DEBUG WebSocket] Sending tool change event:', tool);
       await this.connection.invoke("SendToolChange", this.drawingId, tool);
     } catch (err) {
-      console.error("Failed to send tool change:", err);
+      console.error("[DEBUG WebSocket] Failed to send tool change:", err);
     }
   }
 
@@ -178,6 +185,7 @@ class RealtimeClient {
   _registerHandlers() {
     // User joined the drawing
     this.connection.on("UserJoined", (user) => {
+      console.log('[DEBUG WebSocket] UserJoined event received:', user);
       // Add to presence if not already there
       if (!this.presence.find((p) => p.userId === user.userId)) {
         this.presence.push(user);
@@ -191,6 +199,7 @@ class RealtimeClient {
 
     // User left the drawing
     this.connection.on("UserLeft", (data) => {
+      console.log('[DEBUG WebSocket] UserLeft event received:', data);
       this.presence = this.presence.filter((p) => p.userId !== data.userId);
       delete this.remoteCursors[data.userId];
       this._renderPresence();
@@ -203,6 +212,7 @@ class RealtimeClient {
 
     // Element changed by another user
     this.connection.on("ElementChanged", (data) => {
+      console.log('[DEBUG WebSocket] ElementChanged event received:', data);
       if (this.onElementChanged) {
         this.onElementChanged(data.element, data.action, data.userId);
       }
@@ -210,6 +220,7 @@ class RealtimeClient {
 
     // Cursor moved by another user
     this.connection.on("CursorMoved", (data) => {
+      console.log('[DEBUG WebSocket] CursorMoved event received from user:', data.userId, data.cursor);
       this.remoteCursors[data.userId] = {
         userName: data.userName,
         color: data.color,
@@ -225,6 +236,7 @@ class RealtimeClient {
 
     // Board cleared by another user
     this.connection.on("BoardCleared", (data) => {
+      console.log('[DEBUG WebSocket] BoardCleared event received from user:', data.userId);
       if (this.onBoardCleared) {
         this.onBoardCleared(data.userId);
       }
@@ -232,6 +244,7 @@ class RealtimeClient {
 
     // Tool changed by another user
     this.connection.on("ToolChanged", (data) => {
+      console.log('[DEBUG WebSocket] ToolChanged event received:', data);
       if (this.onToolChanged) {
         this.onToolChanged(data.userId, data.userName, data.color, data.tool);
       }
@@ -239,6 +252,7 @@ class RealtimeClient {
 
     // Presence update (reassignment of colors, etc.)
     this.connection.on("PresenceUpdate", (presenceList) => {
+      console.log('[DEBUG WebSocket] PresenceUpdate received:', presenceList);
       this.presence = presenceList;
       this._renderPresence();
     });
@@ -246,11 +260,13 @@ class RealtimeClient {
 
   _registerConnectionHandlers() {
     this.connection.onreconnecting(() => {
+      console.log('[DEBUG WebSocket] Reconnecting to DrawingHub...');
       this.isConnected = false;
       this._updateConnectionStatus("reconnecting");
     });
 
     this.connection.onreconnected(async () => {
+      console.log('[DEBUG WebSocket] Reconnected to DrawingHub successfully');
       this.isConnected = true;
       this._updateConnectionStatus("connected");
 
@@ -263,16 +279,18 @@ class RealtimeClient {
           this.boardType,
         );
         if (result && result.success) {
+          console.log('[DEBUG WebSocket] Rejoined drawing room:', this.drawingId);
           this.myColor = result.color;
           this.presence = result.presence || [];
           this._renderPresence();
         }
       } catch (err) {
-        console.error("Failed to rejoin drawing after reconnect:", err);
+        console.error("[DEBUG WebSocket] Failed to rejoin drawing after reconnect:", err);
       }
     });
 
     this.connection.onclose(() => {
+      console.log('[DEBUG WebSocket] Connection to DrawingHub closed');
       this.isConnected = false;
       this._updateConnectionStatus("disconnected");
     });

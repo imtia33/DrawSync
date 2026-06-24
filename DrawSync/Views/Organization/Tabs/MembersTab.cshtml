@@ -250,6 +250,12 @@
                 } else {
                     onlineEl.style.display = 'none';
                 }
+                const currentUserMembership = members.find(m => m.userId === currentUserId);
+                const isCurrentUserAdmin = currentUserMembership && (currentUserMembership.roles.includes('admin') || currentUserMembership.roles.includes('owner'));
+                const headers = isCurrentUserAdmin 
+                    ? '<th>Member</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th>'
+                    : '<th>Member</th><th>Role</th><th>Status</th><th>Joined</th>';
+
                 let rows = members.map(m => {
                     const displayName = m.userName || m.userEmail || 'Unknown';
                     const avatarName = encodeURIComponent(displayName);
@@ -258,6 +264,11 @@
                     const statusClass = isOnline ? 'online' : 'offline';
                     const statusText = isOnline ? 'Online' : 'Offline';
                     const createdDate = m.createdAt ? new Date(m.createdAt).toLocaleDateString() : '—';
+                    
+                    const actionCell = isCurrentUserAdmin 
+                        ? `<td><button onclick="removeMember('${m.id}')" class="btn-remove">Remove</button></td>`
+                        : '';
+
                     return `<tr>
                         <td>
                             <div style="display:flex;align-items:center;gap:12px">
@@ -274,10 +285,10 @@
                         <td><span class="role-badge role-${role}">${role}</span></td>
                         <td><span class="online-badge ${statusClass}"><span class="status-dot status-${statusClass}"></span>${statusText}</span></td>
                         <td class="subtitle" style="font-size:0.8rem">${createdDate}</td>
-                        <td><button onclick="removeMember('${m.id}')" class="btn-remove">Remove</button></td>
+                        ${actionCell}
                     </tr>`;
                 }).join('');
-                list.innerHTML = `<table class="data-table"><thead><tr><th>Member</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table>`;
+                list.innerHTML = `<table class="data-table"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
             }
             updateCounter(members.length);
         } catch (err) { console.error('Failed to load members:', err); }
