@@ -52,12 +52,84 @@
 
             // Connect to SignalR for org boards only
             if (window.isOrgBoard && window.RealtimeClient) {
+                // Reveal the realtime debugger panel for org boards.
+                const dbgPanel = document.getElementById('rtDebugPanel');
+                if (dbgPanel) dbgPanel.style.display = 'flex';
+
                 window.realtimeClient = new RealtimeClient();
                 await window.realtimeClient.connect(
                     window.boardId,
                     window.currentUserName,
                     actualType
                 );
+
+                // Wire up the debugger panel buttons.
+                (function setupDebugPanel() {
+                    const log = document.getElementById('rtDebugLog');
+                    const panel = document.getElementById('rtDebugPanel');
+                    const serverSummary = document.getElementById('rtDebugServerSummary');
+
+                    document.getElementById('rtDebugToggleBtn').addEventListener('click', () => {
+                        if (panel) panel.classList.toggle('collapsed');
+                    });
+                    document.getElementById('rtDebugClearBtn').addEventListener('click', () => {
+                        if (log) log.innerHTML = '';
+                    });
+
+                    // Lightweight server summary poll — updates the summary line only (no log spam).
+                    async function pollServerSummary() {
+                        try {
+                            const res = await fetch('/api/debug/realtime?count=5');
+                            if (!res.ok) return;
+                            const data = await res.json();
+                            const rooms = data.rooms || [];
+                            const roomText = rooms.length === 0
+                                ? 'no active rooms'
+                                : rooms.map(r => {
+                                    const names = r.connections.map(c => `${c.userName || '?'}`).join(',');
+                                    return `${r.drawingId ? r.drawingId.slice(0,6) : '?'}:${r.connectionCount}u[${names}]`;
+                                }).join(' | ');
+                            if (serverSummary) {
+                                serverSummary.textContent = `server: events=${data.totalEvents} • rooms=${rooms.length} • ${roomText}`;
+                            }
+                        } catch (_) { /* ignore poll errors */ }
+                    }
+
+                    function addServerLine(cat, msg) {
+                        if (!log) return;
+                        const line = document.createElement('div');
+                        line.className = 'rt-debug-line rt-debug-server';
+                        const time = new Date().toLocaleTimeString();
+                        line.innerHTML = `<span class="rt-debug-time">${time}</span> <span class="rt-debug-cat"></span> <span class="rt-debug-msg"></span>`;
+                        line.querySelector('.rt-debug-cat').textContent = '[S] ' + cat;
+                        line.querySelector('.rt-debug-msg').textContent = msg;
+                        log.prepend(line);
+                        while (log.children.length > 80) log.removeChild(log.lastChild);
+                    }
+
+                    // "Server" button: dump a one-time snapshot of recent server events into the log.
+                    async function dumpServerEvents() {
+                        try {
+                            const res = await fetch('/api/debug/realtime?count=20');
+                            if (!res.ok) return;
+                            const data = await res.json();
+                            addServerLine('snapshot', `totalEvents=${data.totalEvents}, rooms=${(data.rooms||[]).length}`);
+                            for (const r of (data.rooms || [])) {
+                                const names = (r.connections||[]).map(c => `${c.userName}(${c.userId ? c.userId.slice(0,6) : '?'})`).join(', ');
+                                addServerLine('room', `drawing=${r.drawingId ? r.drawingId.slice(0,8) : '?'} org=${r.organizationId ? r.organizationId.slice(0,8) : '?'} users=${r.connectionCount} [${names}]`);
+                            }
+                            for (const e of (data.events || []).slice(0, 12)) {
+                                addServerLine(e.category || 'event', e.message || '');
+                            }
+                        } catch (err) {
+                            addServerLine('fetch-error', String(err));
+                        }
+                    }
+
+                    document.getElementById('rtDebugServerBtn').addEventListener('click', dumpServerEvents);
+                    setInterval(pollServerSummary, 4000);
+                    pollServerSummary();
+                })();
             }
         });
     </script>
@@ -330,6 +402,23 @@
             </div>
         </div>
     </div>
+
+    <!-- Realtime Debugger Panel (org boards only) -->
+    <div id="rtDebugPanel" class="rt-debug-panel" style="display:none;">
+        <div class="rt-debug-header">
+            <div class="rt-debug-title">
+                <i class="bi bi-broadcast"></i> Realtime Debugger
+            </div>
+            <div class="rt-debug-actions">
+                <button id="rtDebugServerBtn" class="rt-debug-mini-btn" title="Fetch server-side events">Server</button>
+                <button id="rtDebugClearBtn" class="rt-debug-mini-btn" title="Clear log">Clear</button>
+                <button id="rtDebugToggleBtn" class="rt-debug-mini-btn" title="Collapse/expand">_</button>
+            </div>
+        </div>
+        <div id="rtDebugStats" class="rt-debug-stats">connected=false • presence=0 • drawing=- • org=-</div>
+        <div id="rtDebugServerSummary" class="rt-debug-stats" style="color:#c084fc; border-top:1px solid #232831;">server: -</div>
+        <div id="rtDebugLog" class="rt-debug-log"></div>
+    </div>
 </div>
 
 <style>
@@ -485,5 +574,61 @@
         margin-left: 4px;
         white-space: nowrap;
     }
+
+    /* Realtime Debugger Panel */
+    .rt-debug-panel {
+        position: fixed;
+        bottom: 16px;
+        right: 16px;
+        width: 380px;
+        max-width: calc(100vw - 32px);
+        max-height: 46vh;
+        background: rgba(15, 17, 21, 0.96);
+        border: 1px solid #2a2f3a;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.45);
+        z-index: 3000;
+        display: flex;
+        flex-direction: column;
+        color: #e4e6eb;
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        font-size: 11px;
+        overflow: hidden;
+        backdrop-filter: blur(6px);
+    }
+    .rt-debug-panel.collapsed { max-height: 38px; }
+    .rt-debug-panel.collapsed .rt-debug-stats,
+    .rt-debug-panel.collapsed .rt-debug-log { display: none; }
+    .rt-debug-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 8px 12px; background: #1b1f27; border-bottom: 1px solid #2a2f3a;
+        cursor: default;
+    }
+    .rt-debug-title { font-weight: 700; color: #10b981; display: flex; align-items: center; gap: 6px; }
+    .rt-debug-actions { display: flex; gap: 4px; }
+    .rt-debug-mini-btn {
+        background: #2a2f3a; color: #cbd2dc; border: none; border-radius: 5px;
+        padding: 3px 8px; font-size: 10px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+    }
+    .rt-debug-mini-btn:hover { background: #3a4150; color: #fff; }
+    .rt-debug-stats {
+        padding: 6px 12px; color: #9aa3b2; border-bottom: 1px solid #232831;
+        font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .rt-debug-log { flex: 1; overflow-y: auto; padding: 6px 10px; }
+    .rt-debug-log::-webkit-scrollbar { width: 6px; }
+    .rt-debug-log::-webkit-scrollbar-thumb { background: #3a4150; border-radius: 3px; }
+    .rt-debug-line {
+        padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+        display: flex; gap: 6px; align-items: baseline; line-height: 1.35;
+    }
+    .rt-debug-time { color: #6b7280; flex-shrink: 0; }
+    .rt-debug-cat { color: #60a5fa; font-weight: 700; flex-shrink: 0; min-width: 92px; }
+    .rt-debug-msg { color: #cbd2dc; word-break: break-word; }
+    .rt-debug-info .rt-debug-cat { color: #60a5fa; }
+    .rt-debug-warn .rt-debug-cat, .rt-debug-warn .rt-debug-msg { color: #f59e0b; }
+    .rt-debug-error .rt-debug-cat, .rt-debug-error .rt-debug-msg { color: #ef4444; }
+    .rt-debug-server { background: rgba(96,165,250,0.06); }
+    .rt-debug-server .rt-debug-cat { color: #c084fc; }
 </style>
 

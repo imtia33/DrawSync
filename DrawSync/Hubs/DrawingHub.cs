@@ -1,3 +1,5 @@
+using DrawSync.Repositories.Interface;
+using DrawSync.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using System.Collections.Concurrent;
@@ -11,15 +13,29 @@ namespace DrawSync.Hubs
         public string UserName { get; set; } = null!;
         public string Color { get; set; } = null!;
         public string BoardType { get; set; } = "whiteboard";
+        public string? OrganizationId { get; set; }
+        public string DrawingId { get; set; } = null!;
     }
 
     public class DrawingRoom
     {
         public string DrawingId { get; set; } = null!;
+        public string? OrganizationId { get; set; }
         public List<ConnectionInfo> Connections { get; set; } = new();
         public object Lock { get; } = new();
     }
 
+    /// <summary>
+    /// Realtime drawing collaboration hub.
+    ///
+    /// SECURITY: A connection may only join a drawing's group after the server verifies that the
+    /// authenticated user is a member of the Appwrite Team that owns the drawing's organization.
+    /// Because broadcasts target `OthersInGroup(drawingId)`, only verified team members present in
+    /// the drawing ever receive them.
+    ///
+    /// All join/leave/broadcast events are recorded via <see cref="RealtimeDebugger"/> so the
+    /// behavior can be inspected live (console + /api/debug/realtime + on-board debug panel).
+    /// </summary>
     [Authorize]
     public class DrawingHub : Hub
     {
@@ -42,23 +58,79 @@ namespace DrawSync.Hubs
         // Track which room each connection is in: ConnectionId -> DrawingId
         private static readonly ConcurrentDictionary<string, string> _connectionRooms = new();
 
+        private readonly IOrgAccessService _orgAccess;
+        private readonly IDrawingRepository _drawingRepository;
+        private readonly ILogger<DrawingHub> _logger;
+
+        public DrawingHub(IOrgAccessService orgAccess, IDrawingRepository drawingRepository, ILogger<DrawingHub> logger)
+        {
+            _orgAccess = orgAccess;
+            _drawingRepository = drawingRepository;
+            _logger = logger;
+        }
+
         /// <summary>
-        /// Join a drawing room. Returns presence list on success, or throws HubException if full.
+        /// Join a drawing room. Verifies the caller is a member of the org that owns the drawing.
+        /// Returns presence list on success, or throws HubException if unauthorized / full.
         /// </summary>
         public async Task<object> JoinDrawing(string drawingId, string userName, string boardType)
         {
-            var room = _rooms.GetOrAdd(drawingId, _ => new DrawingRoom { DrawingId = drawingId });
+            var userId = Context.UserIdentifier ?? Context.ConnectionId;
+            var connId = Context.ConnectionId;
+
+            RealtimeDebugger.Log("Join", $"JoinDrawing requested for drawing={drawingId}", level: RealtimeDebugger.Level.Info,
+                connectionId: connId, userId: userId, drawingId: drawingId);
+
+            if (string.IsNullOrWhiteSpace(drawingId))
+            {
+                RealtimeDebugger.Log("Join", "JoinDrawing rejected: empty drawingId.", level: RealtimeDebugger.Level.Warn,
+                    connectionId: connId, userId: userId);
+                throw new HubException("Invalid drawing id.");
+            }
+
+            // --- Membership verification ---
+            // Resolve the drawing, then verify the user is a member of the drawing's org team.
+            string? organizationId = null;
+            bool membershipOk = false;
+            try
+            {
+                var drawing = await _drawingRepository.GetByIdAsync(drawingId);
+                if (drawing == null)
+                {
+                    RealtimeDebugger.Log("Join", "JoinDrawing rejected: drawing not found.", level: RealtimeDebugger.Level.Warn,
+                        connectionId: connId, userId: userId, drawingId: drawingId, membershipOk: false);
+                    throw new HubException("Drawing not found.");
+                }
+                organizationId = drawing.OrganizationId;
+                membershipOk = await _orgAccess.IsCurrentUserMemberOfOrgAsync(organizationId);
+            }
+            catch (HubException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "JoinDrawing membership check failed for drawing {DrawingId}.", drawingId);
+                RealtimeDebugger.Log("Join", "JoinDrawing rejected: membership check error: " + ex.Message, level: RealtimeDebugger.Level.Error,
+                    connectionId: connId, userId: userId, drawingId: drawingId, organizationId: organizationId, membershipOk: false);
+                throw new HubException("Unable to verify access to this drawing.");
+            }
+
+            if (!membershipOk)
+            {
+                RealtimeDebugger.Log("Join", "JoinDrawing DENIED: user is not a member of the drawing's team.", level: RealtimeDebugger.Level.Warn,
+                    connectionId: connId, userId: userId, drawingId: drawingId, organizationId: organizationId, membershipOk: false);
+                throw new HubException("You are not a member of this team and cannot join this drawing.");
+            }
+
+            var room = _rooms.GetOrAdd(drawingId, _ => new DrawingRoom { DrawingId = drawingId, OrganizationId = organizationId });
 
             lock (room.Lock)
             {
                 // Check capacity
                 if (room.Connections.Count >= MaxUsersPerDrawing)
                 {
+                    RealtimeDebugger.Log("Join", $"JoinDrawing rejected: board full ({MaxUsersPerDrawing}/{MaxUsersPerDrawing}).", level: RealtimeDebugger.Level.Warn,
+                        connectionId: connId, userId: userId, drawingId: drawingId, organizationId: organizationId, membershipOk: true);
                     throw new HubException($"This board is full ({MaxUsersPerDrawing}/{MaxUsersPerDrawing} users). Please try again later.");
                 }
-
-                // Get user ID from claims
-                var userId = Context.UserIdentifier ?? Context.ConnectionId;
 
                 // Assign color based on slot
                 var colorIndex = room.Connections.Count % UserColors.Length;
@@ -66,35 +138,55 @@ namespace DrawSync.Hubs
 
                 var connectionInfo = new ConnectionInfo
                 {
-                    ConnectionId = Context.ConnectionId,
+                    ConnectionId = connId,
                     UserId = userId,
                     UserName = userName ?? "Anonymous",
                     Color = color,
-                    BoardType = boardType ?? "whiteboard"
+                    BoardType = boardType ?? "whiteboard",
+                    OrganizationId = organizationId,
+                    DrawingId = drawingId
                 };
 
                 room.Connections.Add(connectionInfo);
-                _connectionRooms[Context.ConnectionId] = drawingId;
+                _connectionRooms[connId] = drawingId;
             }
 
             // Join SignalR group
-            await Groups.AddToGroupAsync(Context.ConnectionId, drawingId);
+            await Groups.AddToGroupAsync(connId, drawingId);
 
             // Build presence list
             var presence = GetPresenceList(room);
+            var myColor = GetConnectionColor(room, connId);
+
+            // Mirror room into the debugger so /api/debug/realtime can report live presence.
+            RealtimeDebugger.UpsertRoom(drawingId, organizationId,
+                room.Connections.Select(c => new RealtimeDebugger.PresenceEntry
+                {
+                    ConnectionId = c.ConnectionId,
+                    UserId = c.UserId,
+                    UserName = c.UserName,
+                    Color = c.Color
+                }));
 
             // Notify others in the group
             var userJoined = new
             {
-                userId = Context.UserIdentifier ?? Context.ConnectionId,
+                userId,
                 userName = userName ?? "Anonymous",
-                color = GetConnectionColor(room, Context.ConnectionId),
+                color = myColor,
                 boardType = boardType ?? "whiteboard"
             };
 
+            // Recipient count = others currently in the room (excluding this connection).
+            int recipients = room.Connections.Count(c => c.ConnectionId != connId);
+
             await Clients.OthersInGroup(drawingId).SendAsync("UserJoined", userJoined);
 
-            return new { success = true, presence, color = GetConnectionColor(room, Context.ConnectionId) };
+            RealtimeDebugger.Log("Join", $"JoinDrawing OK. Joined drawing group.", level: RealtimeDebugger.Level.Info,
+                connectionId: connId, userId: userId, drawingId: drawingId, organizationId: organizationId,
+                membershipOk: true, recipientCount: recipients);
+
+            return new { success = true, presence, color = myColor, organizationId };
         }
 
         /// <summary>
@@ -102,20 +194,35 @@ namespace DrawSync.Hubs
         /// </summary>
         public async Task LeaveDrawing(string drawingId)
         {
+            RealtimeDebugger.Log("Leave", "LeaveDrawing requested.", level: RealtimeDebugger.Level.Info,
+                connectionId: Context.ConnectionId, userId: Context.UserIdentifier, drawingId: drawingId);
             await RemoveConnectionFromRoom(drawingId, Context.ConnectionId);
         }
 
         /// <summary>
         /// Relay an element change (add/update/delete) to others in the drawing.
+        /// Only connections that have joined the room (and thus passed membership) may broadcast.
         /// </summary>
         public async Task SendElement(string drawingId, object element, string action)
         {
+            if (!IsInRoom(drawingId, out var room))
+            {
+                RealtimeDebugger.Log("Broadcast", "SendElement BLOCKED: connection not in room.", level: RealtimeDebugger.Level.Warn,
+                    connectionId: Context.ConnectionId, userId: Context.UserIdentifier, drawingId: drawingId, action: action);
+                return;
+            }
+
+            int recipients = room.Connections.Count(c => c.ConnectionId != Context.ConnectionId);
             await Clients.OthersInGroup(drawingId).SendAsync("ElementChanged", new
             {
                 element,
                 action,
                 userId = Context.UserIdentifier ?? Context.ConnectionId
             });
+
+            RealtimeDebugger.Log("Broadcast", $"SendElement '{action}' relayed.", level: RealtimeDebugger.Level.Info,
+                connectionId: Context.ConnectionId, userId: Context.UserIdentifier,
+                drawingId: drawingId, organizationId: room.OrganizationId, action: action, recipientCount: recipients);
         }
 
         /// <summary>
@@ -123,7 +230,8 @@ namespace DrawSync.Hubs
         /// </summary>
         public async Task SendCursor(string drawingId, object cursor)
         {
-            var room = GetRoom(drawingId);
+            if (!IsInRoom(drawingId, out var room)) return;
+
             var color = GetConnectionColor(room, Context.ConnectionId);
             var userName = GetConnectionUserName(room, Context.ConnectionId);
 
@@ -141,10 +249,22 @@ namespace DrawSync.Hubs
         /// </summary>
         public async Task SendClear(string drawingId)
         {
+            if (!IsInRoom(drawingId, out var room))
+            {
+                RealtimeDebugger.Log("Broadcast", "SendClear BLOCKED: connection not in room.", level: RealtimeDebugger.Level.Warn,
+                    connectionId: Context.ConnectionId, userId: Context.UserIdentifier, drawingId: drawingId);
+                return;
+            }
+
+            int recipients = room.Connections.Count(c => c.ConnectionId != Context.ConnectionId);
             await Clients.OthersInGroup(drawingId).SendAsync("BoardCleared", new
             {
                 userId = Context.UserIdentifier ?? Context.ConnectionId
             });
+
+            RealtimeDebugger.Log("Broadcast", "SendClear relayed.", level: RealtimeDebugger.Level.Info,
+                connectionId: Context.ConnectionId, userId: Context.UserIdentifier,
+                drawingId: drawingId, organizationId: room.OrganizationId, action: "clear", recipientCount: recipients);
         }
 
         /// <summary>
@@ -152,7 +272,8 @@ namespace DrawSync.Hubs
         /// </summary>
         public async Task SendToolChange(string drawingId, string tool)
         {
-            var room = GetRoom(drawingId);
+            if (!IsInRoom(drawingId, out var room)) return;
+
             var color = GetConnectionColor(room, Context.ConnectionId);
             var userName = GetConnectionUserName(room, Context.ConnectionId);
 
@@ -172,6 +293,8 @@ namespace DrawSync.Hubs
         {
             if (_connectionRooms.TryRemove(Context.ConnectionId, out var drawingId))
             {
+                RealtimeDebugger.Log("Disconnect", "Connection disconnected, leaving room.", level: RealtimeDebugger.Level.Info,
+                    connectionId: Context.ConnectionId, userId: Context.UserIdentifier, drawingId: drawingId);
                 await RemoveConnectionFromRoom(drawingId, Context.ConnectionId);
             }
 
@@ -179,6 +302,17 @@ namespace DrawSync.Hubs
         }
 
         #region Private Helpers
+
+        /// <summary>True iff this connection has successfully joined (and thus passed membership for) the room.</summary>
+        private bool IsInRoom(string drawingId, out DrawingRoom room)
+        {
+            room = GetRoom(drawingId)!;
+            if (room == null) return false;
+            lock (room.Lock)
+            {
+                return room.Connections.Any(c => c.ConnectionId == Context.ConnectionId);
+            }
+        }
 
         private async Task RemoveConnectionFromRoom(string drawingId, string connectionId)
         {
@@ -208,6 +342,18 @@ namespace DrawSync.Hubs
                 if (room.Connections.Count == 0)
                 {
                     _rooms.TryRemove(drawingId, out _);
+                    RealtimeDebugger.RemoveRoom(drawingId);
+                }
+                else
+                {
+                    RealtimeDebugger.UpsertRoom(drawingId, room.OrganizationId,
+                        room.Connections.Select(c => new RealtimeDebugger.PresenceEntry
+                        {
+                            ConnectionId = c.ConnectionId,
+                            UserId = c.UserId,
+                            UserName = c.UserName,
+                            Color = c.Color
+                        }));
                 }
             }
 
@@ -232,6 +378,10 @@ namespace DrawSync.Hubs
                 });
 
                 await Clients.Group(drawingId).SendAsync("PresenceUpdate", presence);
+
+                RealtimeDebugger.Log("Leave", $"Connection removed from room. Remaining={remainingPresence.Count}.", level: RealtimeDebugger.Level.Info,
+                    connectionId: connectionId, userId: removed.UserId, drawingId: drawingId, organizationId: room.OrganizationId,
+                    recipientCount: remainingPresence.Count);
             }
         }
 

@@ -6,8 +6,11 @@
         <div class="header-text">
             <h2>Team Members</h2>
             <p class="subtitle" id="membersCounter">Loading workspace members...<span id="onlineCount" class="online-count" style="display:none"></span></p>
+            <p id="adminHint" class="subtitle" style="display:none; color: var(--muted-foreground); font-size: 0.8rem; margin-top: 6px;">
+                <i class="bi bi-shield-lock"></i> You have admin rights — you can invite and remove members.
+            </p>
         </div>
-        <button id="inviteMemberBtn" class="btn-new-drawing">
+        <button id="inviteMemberBtn" class="btn-new-drawing" style="display:none;">
             <i class="bi bi-person-plus"></i> Invite Member
         </button>
     </div>
@@ -237,6 +240,20 @@
             const res = await fetch(`${apiBase}/members`);
             const data = await res.json();
             const members = data.memberships || [];
+            // Server tells us whether the current user may manage members.
+            const isAdmin = data.isCurrentMemberAdmin === true;
+
+            // Toggle the Invite button + admin hint visibility based on role.
+            const inviteBtn = document.getElementById('inviteMemberBtn');
+            const adminHint = document.getElementById('adminHint');
+            if (isAdmin) {
+                inviteBtn.style.display = 'flex';
+                adminHint.style.display = 'block';
+            } else {
+                inviteBtn.style.display = 'none';
+                adminHint.style.display = 'none';
+            }
+
             const list = document.getElementById('membersList');
             if (!members || members.length === 0) {
                 list.innerHTML = '<div class="loading-state"><p>No members found.</p></div>';
@@ -258,6 +275,11 @@
                     const statusClass = isOnline ? 'online' : 'offline';
                     const statusText = isOnline ? 'Online' : 'Offline';
                     const createdDate = m.createdAt ? new Date(m.createdAt).toLocaleDateString() : '—';
+                    // Admins see the Remove button (and never for their own membership).
+                    const canRemove = isAdmin && m.userId !== currentUserId;
+                    const actionCell = canRemove
+                        ? `<button onclick="removeMember('${m.id}')" class="btn-remove">Remove</button>`
+                        : `<span style="color: var(--muted-foreground); font-size: 0.8rem;">${m.userId === currentUserId ? 'You' : '—'}</span>`;
                     return `<tr>
                         <td>
                             <div style="display:flex;align-items:center;gap:12px">
@@ -274,7 +296,7 @@
                         <td><span class="role-badge role-${role}">${role}</span></td>
                         <td><span class="online-badge ${statusClass}"><span class="status-dot status-${statusClass}"></span>${statusText}</span></td>
                         <td class="subtitle" style="font-size:0.8rem">${createdDate}</td>
-                        <td><button onclick="removeMember('${m.id}')" class="btn-remove">Remove</button></td>
+                        <td>${actionCell}</td>
                     </tr>`;
                 }).join('');
                 list.innerHTML = `<table class="data-table"><thead><tr><th>Member</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table>`;
@@ -299,7 +321,20 @@
 
     window.removeMember = async function(id) {
         if (confirm('Are you sure you want to remove this member?')) {
-            try { await fetch(`${apiBase}/members/${id}`, { method: 'DELETE' }); loadMembers(); } catch (err) { alert('Failed to remove member'); }
+            try {
+                const res = await fetch(`${apiBase}/members/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadMembers();
+                } else if (res.status === 403) {
+                    let msg = 'Only organization admins can remove members.';
+                    try { const d = await res.json(); if (d && d.error) msg = d.error; } catch (_) {}
+                    alert(msg);
+                } else {
+                    let msg = 'Failed to remove member';
+                    try { const d = await res.json(); if (d && d.error) msg = d.error; } catch (_) {}
+                    alert(msg);
+                }
+            } catch (err) { alert('Failed to remove member'); }
         }
     }
 

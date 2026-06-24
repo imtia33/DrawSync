@@ -1,6 +1,7 @@
 using DrawSync.UnitOfWork.Interface;
 using DrawSync.Models;
 using DrawSync.Helpers;
+using DrawSync.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -21,30 +22,38 @@ namespace DrawSync.Controllers
         private readonly IUnitOfWork _unitOfWork;
         private readonly Teams _teams;
         private readonly Account _account;
+        private readonly IOrgAccessService _orgAccess;
 
-        public OrganizationDashboardController(IUnitOfWork unitOfWork, Teams teams, Account account)
+        public OrganizationDashboardController(IUnitOfWork unitOfWork, Teams teams, Account account, IOrgAccessService orgAccess)
         {
             _unitOfWork = unitOfWork;
             _teams = teams;
             _account = account;
+            _orgAccess = orgAccess;
         }
 
         private string? GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        private async Task<bool> IsUserInOrgAsync(string organizationId)
-        {
-            var org = await _unitOfWork.Organizations.GetByIdAsync(organizationId);
-            return org != null;
-        }
+        /// <summary>
+        /// Membership check that uses the SESSION-scoped Teams list (not the API key).
+        /// A user is "in the org" iff the org's team id appears in their own team memberships.
+        /// </summary>
+        private Task<bool> IsUserInOrgAsync(string organizationId)
+            => _orgAccess.IsCurrentUserMemberOfOrgAsync(organizationId);
 
-        // Dashboard Overview - List Drawings
+        /// <summary>Admin/owner check — used to gate destructive / management actions.</summary>
+        private Task<bool> IsUserOrgAdminAsync(string organizationId)
+            => _orgAccess.IsCurrentUserOrgAdminAsync(organizationId);
+
+        // Dashboard Overview - List Drawings (user-scoped)
         [HttpGet("drawings")]
         public async Task<ActionResult<IEnumerable<Drawing>>> GetDrawings(string organizationId)
         {
             if (!await IsUserInOrgAsync(organizationId))
                 return Forbid();
 
-            var drawings = await _unitOfWork.Drawings.GetByOrganizationAsync(organizationId);
+            // Session-scoped listing: only drawings the user can read (team members) + filtered by org.
+            var drawings = await _orgAccess.GetDrawingsForOrgAsync(organizationId);
             return Ok(drawings);
         }
 
@@ -60,7 +69,7 @@ namespace DrawSync.Controllers
                 return NotFound();
 
             // Enforce plan limits - STRICT CHECK
-            var currentDrawings = await _unitOfWork.Drawings.GetByOrganizationAsync(organizationId);
+            var currentDrawings = await _orgAccess.GetDrawingsForOrgAsync(organizationId);
             if (!PlanLimits.CanCreateDrawing(org.Plan, currentDrawings.Count()))
             {
                 var (maxDrawings, _) = PlanLimits.GetLimits(org.Plan);
@@ -87,7 +96,7 @@ namespace DrawSync.Controllers
             return CreatedAtAction(nameof(GetDrawing), new { organizationId, id = drawing.Id }, drawing);
         }
 
-        // Get Single Drawing
+        // Get Single Drawing (membership enforced)
         [HttpGet("drawings/{id}")]
         public async Task<ActionResult<Drawing>> GetDrawing(string organizationId, string id)
         {
@@ -131,14 +140,14 @@ namespace DrawSync.Controllers
                 return NotFound();
 
             await _unitOfWork.Drawings.DeleteAsync(id);
-            var currentDrawings = await _unitOfWork.Drawings.GetByOrganizationAsync(organizationId);
+            var currentDrawings = await _orgAccess.GetDrawingsForOrgAsync(organizationId);
             await UpdateUsageOnDrawingDelete(organizationId, currentDrawings.Count());
 
             await _unitOfWork.SaveChangesAsync();
             return NoContent();
         }
 
-        // Members - List
+        // Members - List (includes whether the current user is an admin so the UI can show Remove only to admins)
         [HttpGet("members")]
         public async Task<ActionResult> ListMembers(string organizationId)
         {
@@ -148,6 +157,10 @@ namespace DrawSync.Controllers
             try
             {
                 var teamMembers = await _teams.ListMemberships(organizationId);
+
+                // Determine whether the current user may manage members (admin/owner of this team).
+                var currentUserId = GetUserId();
+                var isCurrentUserAdmin = false;
 
                 // Enrich memberships
                 var enrichedMembers = teamMembers.Memberships.Select(m => new
@@ -159,10 +172,28 @@ namespace DrawSync.Controllers
                     m.Roles,
                     Confirm = m.Confirm,
                     m.Mfa,
-                    CreatedAt = m.CreatedAt
+                    CreatedAt = m.CreatedAt,
+                    // Per-member flag: is THIS member an admin/owner?
+                    IsAdmin = m.Roles != null && (
+                        m.Roles.Contains("owner", StringComparer.OrdinalIgnoreCase) ||
+                        m.Roles.Contains("admin", StringComparer.OrdinalIgnoreCase))
                 }).ToList();
 
-                return Ok(new { memberships = enrichedMembers, total = enrichedMembers.Count });
+                // Compute current-user admin status once, from the membership list.
+                var mine = teamMembers.Memberships.FirstOrDefault(m => m.UserId == currentUserId);
+                if (mine != null && mine.Roles != null)
+                {
+                    isCurrentUserAdmin = mine.Roles.Contains("owner", StringComparer.OrdinalIgnoreCase) ||
+                                         mine.Roles.Contains("admin", StringComparer.OrdinalIgnoreCase);
+                }
+
+                return Ok(new
+                {
+                    memberships = enrichedMembers,
+                    total = enrichedMembers.Count,
+                    currentUserId,
+                    isCurrentMemberAdmin = isCurrentUserAdmin
+                });
             }
             catch (AppwriteException ex)
             {
@@ -188,12 +219,16 @@ namespace DrawSync.Controllers
             }
         }
 
-        // Members - Invite using Teams API - WITH PLAN LIMIT ENFORCEMENT
+        // Members - Invite using Teams API - ADMIN ONLY + WITH PLAN LIMIT ENFORCEMENT
         [HttpPost("members/invite")]
         public async Task<IActionResult> InviteMember(string organizationId, [FromBody] InviteMemberRequest req)
         {
             if (!await IsUserInOrgAsync(organizationId))
                 return Forbid();
+
+            // Only admins/owners may invite members.
+            if (!await IsUserOrgAdminAsync(organizationId))
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = "Only organization admins can invite members." });
 
             var org = await _unitOfWork.Organizations.GetByIdAsync(organizationId);
             if (org == null)
@@ -228,12 +263,16 @@ namespace DrawSync.Controllers
             }
         }
 
-        // Members - Remove
+        // Members - Remove - ADMIN ONLY
         [HttpDelete("members/{membershipId}")]
         public async Task<IActionResult> RemoveMember(string organizationId, string membershipId)
         {
             if (!await IsUserInOrgAsync(organizationId))
                 return Forbid();
+
+            // Only admins/owners may remove members.
+            if (!await IsUserOrgAdminAsync(organizationId))
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = "Only organization admins can remove members." });
 
             try
             {
@@ -271,12 +310,15 @@ namespace DrawSync.Controllers
             });
         }
 
-        // Billing - Upgrade to Pro - SECURE (server-side only)
+        // Billing - Upgrade to Pro - ADMIN ONLY (SECURE server-side)
         [HttpPost("billing/upgrade")]
         public async Task<IActionResult> UpgradeToPro(string organizationId)
         {
             if (!await IsUserInOrgAsync(organizationId))
                 return Forbid();
+
+            if (!await IsUserOrgAdminAsync(organizationId))
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = "Only organization admins can upgrade the plan." });
 
             var org = await _unitOfWork.Organizations.GetByIdAsync(organizationId);
             if (org == null)
@@ -320,12 +362,14 @@ namespace DrawSync.Controllers
                 return NotFound();
 
             var (maxDrawings, maxMembers) = PlanLimits.GetLimits(org.Plan);
-            var drawings = await _unitOfWork.Drawings.GetByOrganizationAsync(organizationId);
+            var drawings = await _orgAccess.GetDrawingsForOrgAsync(organizationId);
             var members = await _teams.ListMemberships(organizationId);
+            var isCurrentMemberAdmin = await IsUserOrgAdminAsync(organizationId);
 
             return Ok(new
             {
                 org,
+                isCurrentMemberAdmin,
                 usage = new
                 {
                     drawings = drawings.Count(),
@@ -336,12 +380,15 @@ namespace DrawSync.Controllers
             });
         }
 
-        // Settings - Update Organization (name only, other fields server-controlled)
+        // Settings - Update Organization (name only) - ADMIN ONLY
         [HttpPut("settings")]
         public async Task<IActionResult> UpdateSettings(string organizationId, [FromBody] UpdateOrgRequest req)
         {
             if (!await IsUserInOrgAsync(organizationId))
                 return Forbid();
+
+            if (!await IsUserOrgAdminAsync(organizationId))
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = "Only organization admins can update organization settings." });
 
             var org = await _unitOfWork.Organizations.GetByIdAsync(organizationId);
             if (org == null)
@@ -376,7 +423,7 @@ namespace DrawSync.Controllers
             if (org == null)
                 return NotFound();
 
-            var drawings = await _unitOfWork.Drawings.GetByOrganizationAsync(organizationId);
+            var drawings = await _orgAccess.GetDrawingsForOrgAsync(organizationId);
             var members = await _teams.ListMemberships(organizationId);
             var usage = await _unitOfWork.Usage.GetCurrentMonthAsync(organizationId);
 
@@ -392,19 +439,22 @@ namespace DrawSync.Controllers
             });
         }
 
-        // Settings - Delete Organization
+        // Settings - Delete Organization - ADMIN/OWNER ONLY
         [HttpDelete("")]
         public async Task<IActionResult> DeleteOrganization(string organizationId)
         {
             if (!await IsUserInOrgAsync(organizationId))
                 return Forbid();
 
+            if (!await IsUserOrgAdminAsync(organizationId))
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = "Only organization admins can delete the organization." });
+
             var org = await _unitOfWork.Organizations.GetByIdAsync(organizationId);
             if (org == null)
                 return NotFound();
 
             // Delete all associated drawings
-            var drawings = await _unitOfWork.Drawings.GetByOrganizationAsync(organizationId);
+            var drawings = await _orgAccess.GetDrawingsForOrgAsync(organizationId);
             foreach (var drawing in drawings)
             {
                 await _unitOfWork.Drawings.DeleteAsync(drawing.Id ?? string.Empty);
@@ -467,7 +517,7 @@ namespace DrawSync.Controllers
             var usage = await _unitOfWork.Usage.GetCurrentMonthAsync(organizationId);
             if (usage == null)
             {
-                var drawings = await _unitOfWork.Drawings.GetByOrganizationAsync(organizationId);
+                var drawings = await _orgAccess.GetDrawingsForOrgAsync(organizationId);
                 usage = new Usage
                 {
                     Id = ID.Unique(),
