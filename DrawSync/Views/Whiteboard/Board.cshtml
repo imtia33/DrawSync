@@ -52,9 +52,8 @@
 
             // Connect to SignalR for org boards only
             if (window.isOrgBoard && window.RealtimeClient) {
-                // Reveal the realtime debugger panel for org boards.
-                const dbgPanel = document.getElementById('rtDebugPanel');
-                if (dbgPanel) dbgPanel.style.display = 'flex';
+                // The realtime debugger panel is only revealed in Development (see DebugController).
+                window.isDebugMode = @(Context.RequestServices.GetService(typeof(IWebHostEnvironment)) is Microsoft.AspNetCore.Hosting.IWebHostEnvironment env ? env.IsDevelopment().ToString().ToLower() : "false");
 
                 window.realtimeClient = new RealtimeClient();
                 await window.realtimeClient.connect(
@@ -63,7 +62,10 @@
                     actualType
                 );
 
-                // Wire up the debugger panel buttons.
+                // Wire up the debugger panel buttons (Development only).
+                if (window.isDebugMode) {
+                    const dbgPanel = document.getElementById('rtDebugPanel');
+                    if (dbgPanel) dbgPanel.style.display = 'flex';
                 (function setupDebugPanel() {
                     const log = document.getElementById('rtDebugLog');
                     const panel = document.getElementById('rtDebugPanel');
@@ -130,6 +132,7 @@
                     setInterval(pollServerSummary, 4000);
                     pollServerSummary();
                 })();
+                } // end if (window.isDebugMode)
             }
         });
     </script>

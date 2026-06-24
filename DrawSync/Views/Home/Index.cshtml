@@ -4,52 +4,180 @@
 
 <canvas id="particleCanvas" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none;"></canvas>
 
-<div class="d-flex align-items-center justify-content-center" style="min-height: 80vh;">
-    <div class="text-center">
-        <h1 id="revealTitle" class="display-1 fw-bold mb-6" style="font-family: 'Syncopate', sans-serif; letter-spacing: -4px; line-height: 0.9; opacity: 0; color: var(--foreground);">
-            DRAW<br/><span style="color: var(--primary)">SYNC</span>
+<div class="hero-section">
+    <div class="hero-inner">
+        <h1 id="revealTitle" class="hero-title">
+            DRAW<br /><span class="hero-title-accent">SYNC</span>
         </h1>
-        <p class="mb-8" style="max-width: 500px; margin: 0 auto; font-size: 1.1rem; line-height: 1.6; animation: fadeIn 1s ease 1s forwards; opacity: 0; color: var(--muted-foreground);">
-            The real-time collaborative canvas for modern teams. Simple. Fast. Powerful.
+        <p class="hero-tagline">
+            The real-time collaborative canvas for modern teams.<br />
+            Simple. Fast. Powerful.
         </p>
-        
-        <div class="d-flex flex-column gap-3 align-items-center mt-5" style="animation: fadeInUp 1s ease 1.2s forwards; opacity: 0;">
+
+        <div class="hero-actions">
             @if (User.Identity?.IsAuthenticated == true)
             {
-                <a asp-controller="Organization" asp-action="Index" class="btn-primary-custom px-5">Dashboard</a>
-                
-                <div class="mt-4 p-3 border rounded text-start" style="max-width: 600px; width: 100%; font-family: var(--font-mono); font-size: 0.75rem; overflow-x: auto; background: var(--card); color: var(--foreground); border-color: var(--border);">
-                    <h6 class="mb-2 fw-bold text-uppercase" style="font-size: 0.7rem; color: var(--muted-foreground);">Appwrite Response Log</h6>
-                    <pre class="m-0" style="color: inherit; background: transparent; border: none;">@ViewBag.RawApiResponse</pre>
-                </div>
+                <a asp-controller="Organization" asp-action="Index" class="btn-primary-custom hero-cta">
+                    <i class="bi bi-grid-1x2 me-2"></i> Go to Workspaces
+                </a>
+                <a asp-controller="Whiteboard" asp-action="Index" class="btn-outline-custom hero-cta-secondary">
+                    <i class="bi bi-easel me-2"></i> Open Whiteboard
+                </a>
             }
             else
             {
-                <a asp-controller="Auth" asp-action="Register" class="btn-primary-custom px-5">Try for Free</a>
-                <a asp-controller="Auth" asp-action="Login" class="btn-outline-custom px-5">Sign In</a>
+                <a asp-controller="Auth" asp-action="Register" class="btn-primary-custom hero-cta">
+                    Try for Free
+                </a>
+                <a asp-controller="Auth" asp-action="Login" class="btn-outline-custom hero-cta-secondary">
+                    Sign In
+                </a>
             }
         </div>
+
+        @if (User.Identity?.IsAuthenticated != true)
+        {
+            <div class="feature-row">
+                <div class="feature-chip">
+                    <i class="bi bi-broadcast-pin"></i>
+                    <span>Realtime Sync</span>
+                </div>
+                <div class="feature-chip">
+                    <i class="bi bi-people-fill"></i>
+                    <span>Team Workspaces</span>
+                </div>
+                <div class="feature-chip">
+                    <i class="bi bi-map-fill"></i>
+                    <span>GIS Maps</span>
+                </div>
+                <div class="feature-chip">
+                    <i class="bi bi-magic"></i>
+                    <span>Neon Brush</span>
+                </div>
+            </div>
+        }
     </div>
 </div>
 
 @section Scripts {
     <style>
         body { background-color: var(--background) !important; }
+
+        .hero-section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 70px);
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .hero-inner {
+            max-width: 760px;
+            width: 100%;
+        }
+
+        .hero-title {
+            font-family: 'Syncopate', sans-serif;
+            font-weight: 700;
+            font-size: clamp(3rem, 12vw, 7rem);
+            line-height: 0.9;
+            letter-spacing: -4px;
+            margin: 0 0 1.5rem 0;
+            color: var(--foreground);
+            opacity: 0;
+        }
+
+        .hero-title-accent {
+            color: var(--primary);
+        }
+
+        .reveal-char {
+            display: inline-block;
+            animation: reveal 0.8s cubic-bezier(0.77, 0, 0.175, 1) forwards;
+        }
+
+        .hero-tagline {
+            max-width: 520px;
+            margin: 0 auto 2.5rem;
+            font-size: 1.15rem;
+            line-height: 1.6;
+            color: var(--muted-foreground);
+            opacity: 0;
+            animation: fadeIn 1s ease 1s forwards;
+        }
+
+        .hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: center;
+            margin-bottom: 3.5rem;
+            opacity: 0;
+            animation: fadeInUp 1s ease 1.2s forwards;
+        }
+
+        .hero-cta,
+        .hero-cta-secondary {
+            padding: 0.9rem 2.2rem;
+            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .feature-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            opacity: 0;
+            animation: fadeInUp 1s ease 1.5s forwards;
+        }
+
+        .feature-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--muted-foreground);
+            box-shadow: var(--shadow-xs);
+            transition: all 0.25s ease;
+        }
+
+        .feature-chip:hover {
+            transform: translateY(-2px);
+            border-color: var(--primary);
+            color: var(--primary);
+            box-shadow: var(--shadow-md);
+        }
+
+        .feature-chip i {
+            font-size: 0.95rem;
+        }
+
         @@keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
         @@keyframes reveal {
             0% { filter: blur(10px); opacity: 0; transform: scale(0.9); }
             100% { filter: blur(0); opacity: 1; transform: scale(1); }
         }
+
         @@keyframes fadeInUp {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .reveal-char {
-            display: inline-block;
-            animation: reveal 0.8s cubic-bezier(0.77, 0, 0.175, 1) forwards;
+
+        @@media (max-width: 640px) {
+            .hero-actions { flex-direction: column; align-items: stretch; }
+            .hero-cta, .hero-cta-secondary { width: 100%; justify-content: center; }
         }
     </style>
     <script>
@@ -64,7 +192,6 @@
         }
 
         function getParticleColor() {
-            // Use black tones for particles in both modes
             const isDark = document.documentElement.classList.contains('dark');
             return isDark ? 'rgba(220, 220, 220, 0.45)' : 'rgba(0, 0, 0, 0.35)';
         }
@@ -94,13 +221,16 @@
         // --- Futuristic Mouse Trail Logic ---
         let trail = [];
         let trailParticles = [];
-        const MAX_TRAIL_AGE = 120; // Slightly faster fade for "energy" look
+        const MAX_TRAIL_AGE = 120;
 
+        let lastMouseTime = 0;
         window.addEventListener('mousemove', (e) => {
             const now = Date.now();
+            // Throttle trail emission a touch for performance.
+            if (now - lastMouseTime < 8) return;
+            lastMouseTime = now;
             trail.push({ x: e.clientX, y: e.clientY, age: 0, timestamp: now });
-            
-            // Add a few "energy dust" particles at the cursor
+
             if (Math.random() > 0.5) {
                 trailParticles.push({
                     x: e.clientX,
@@ -117,8 +247,6 @@
             if (trail.length < 2) return;
 
             const isDark = document.documentElement.classList.contains('dark');
-            
-            // Neon Palette (Black / near-black for rocket glow effect)
             const neonColor = isDark ? '200, 200, 200' : '0, 0, 0';
             const coreColor = isDark ? '255, 255, 255' : '80, 80, 80';
 
@@ -128,28 +256,25 @@
             for (let i = 1; i < trail.length; i++) {
                 const p1 = trail[i - 1];
                 const p2 = trail[i];
-                
+
                 const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-                if (dist > 150) continue; 
+                if (dist > 150) continue;
 
                 const ageRatio = p2.age / MAX_TRAIL_AGE;
                 const alpha = 1 - ageRatio;
                 if (alpha <= 0) continue;
 
-                // 1. Atmospheric Glow (Widest, very soft)
                 ctx.shadowBlur = 35 * alpha;
                 ctx.shadowColor = `rgba(${neonColor}, ${alpha * 0.5})`;
                 ctx.lineWidth = 15 * alpha;
                 ctx.strokeStyle = `rgba(${neonColor}, ${alpha * 0.1})`;
                 ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
 
-                // 2. Neon Halo (Medium, intense)
                 ctx.shadowBlur = 10 * alpha;
                 ctx.lineWidth = 6 * alpha;
                 ctx.strokeStyle = `rgba(${neonColor}, ${alpha * 0.7})`;
                 ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
 
-                // 3. Electric Core (Thin, White)
                 ctx.shadowBlur = 5 * alpha;
                 ctx.shadowColor = '#fff';
                 ctx.lineWidth = 2 * alpha;
@@ -157,10 +282,8 @@
                 ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
             }
 
-            // Reset for performance
             ctx.shadowBlur = 0;
 
-            // Neon Sparks
             trailParticles.forEach((p, index) => {
                 p.x += p.vx;
                 p.y += p.vy;
@@ -171,7 +294,6 @@
                 ctx.beginPath(); ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2); ctx.fill();
             });
 
-            // --- CRITICAL: Update age and filter old points to ensure they disappear ---
             trail.forEach(p => p.age++);
             trail = trail.filter(p => p.age < MAX_TRAIL_AGE);
         }
@@ -184,16 +306,8 @@
 
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw background particles (fewer and slower for focus on trail)
-            particles.forEach(p => {
-                p.update();
-                p.draw();
-            });
-
-            // Draw neon trail
+            particles.forEach(p => { p.update(); p.draw(); });
             drawNeonTrail();
-
             requestAnimationFrame(animate);
         }
 
@@ -203,10 +317,6 @@
             const text = "DRAWSYNC";
             title.innerHTML = '';
             title.style.opacity = '1';
-
-            const style = getComputedStyle(document.documentElement);
-            const primaryColor = style.getPropertyValue('--primary').trim();
-            const fgColor = style.getPropertyValue('--foreground').trim();
 
             [...text].forEach((char, i) => {
                 const span = document.createElement('span');

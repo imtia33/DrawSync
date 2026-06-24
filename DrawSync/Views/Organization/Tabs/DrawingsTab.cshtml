@@ -84,8 +84,8 @@
     }
 
     .btn-new-drawing {
-        background: #0a0a0a;
-        color: #ffffff !important;
+        background: var(--primary);
+        color: var(--primary-foreground) !important;
         text-decoration: none;
         padding: 12px 24px;
         border-radius: var(--radius);
@@ -94,14 +94,15 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        transition: opacity 0.2s;
+        transition: all 0.2s;
         box-shadow: var(--shadow-md);
         border: none;
         cursor: pointer;
     }
 
     .btn-new-drawing:hover {
-        opacity: 0.85;
+        background: var(--primary-hover);
+        transform: translateY(-1px);
     }
 
     .drawings-grid {
@@ -216,8 +217,8 @@
     .modal-footer-btns { display: flex; gap: 12px; margin-top: 28px; }
     .btn-cancel { flex: 1; padding: 14px; background: var(--secondary); border: none; border-radius: var(--radius); font-weight: 700; color: var(--foreground); cursor: pointer; transition: all 0.2s; }
     .btn-cancel:hover { filter: brightness(0.97); }
-    .btn-submit { flex: 2; padding: 14px; background: #0a0a0a; border: none; border-radius: var(--radius); font-weight: 700; color: #ffffff; cursor: pointer; transition: opacity 0.2s; }
-    .btn-submit:hover { opacity: 0.88; }
+    .btn-submit { flex: 2; padding: 14px; background: var(--primary); border: none; border-radius: var(--radius); font-weight: 700; color: var(--primary-foreground); cursor: pointer; transition: all 0.2s; }
+    .btn-submit:hover { background: var(--primary-hover); }
 
     .type-selector { display: flex; gap: 14px; }
     .type-option { flex: 1; cursor: pointer; }

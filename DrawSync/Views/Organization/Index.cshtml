@@ -8,7 +8,8 @@
     <div class="selection-container">
         <!-- Hero Section -->
         <header class="selection-hero">
-            <h1 class="display-4 fw-bold mb-3" style="color: #000000;">Your Workspaces</h1>
+            <span class="hero-eyebrow"><i class="bi bi-buildings"></i> Workspaces</span>
+            <h1 class="selection-title">Your Workspaces</h1>
             <p class="lead text-muted">Select an organization to access your collaborative whiteboards and team settings.</p>
         </header>
 
@@ -64,8 +65,8 @@
 
 <style>
     .org-selection-wrapper {
-        padding: 80px 20px;
-        min-height: calc(100vh - 70px);
+        padding: 60px 20px 80px;
+        min-height: calc(100vh - 70px - 200px);
         background: radial-gradient(circle at top right, hsl(from var(--primary) h s l / 0.05), transparent 400px),
                     radial-gradient(circle at bottom left, hsl(from var(--primary) h s l / 0.03), transparent 300px);
     }
@@ -79,6 +80,30 @@
         text-align: center;
         margin-bottom: 60px;
         animation: fadeInDown 0.8s ease-out;
+    }
+
+    .hero-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        background: hsl(from var(--primary) h s l / 0.1);
+        color: var(--primary);
+        border-radius: 100px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 20px;
+    }
+
+    .selection-title {
+        font-size: clamp(2rem, 5vw, 3rem);
+        font-weight: 800;
+        color: var(--foreground);
+        margin: 0 0 12px 0;
+        letter-spacing: -1px;
+        line-height: 1.1;
     }
 
     .text-primary-gradient {
@@ -130,8 +155,8 @@
     .org-avatar {
         width: 56px;
         height: 56px;
-        background: #0a0a0a;
-        color: #ffffff;
+        background: var(--primary);
+        color: var(--primary-foreground);
         border-radius: 16px;
         display: flex;
         align-items: center;
@@ -156,22 +181,21 @@
     }
 
     .org-badge.pro {
-        background: #0a0a0a;
-        color: #ffffff;
-        border: 1px solid #0a0a0a;
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border: 1px solid var(--primary);
     }
 
     .org-badge.free {
-        background: #0a0a0a;
-        color: #ffffff;
-        border: 1px solid #0a0a0a;
-        opacity: 0.55;
+        background: var(--secondary);
+        color: var(--muted-foreground);
+        border: 1px solid var(--border);
     }
 
     .org-name {
         font-size: 1.5rem;
         font-weight: 800;
-        color: #0a0a0a;
+        color: var(--foreground);
         margin: 0 0 12px 0;
         letter-spacing: -0.02em;
     }
@@ -193,8 +217,8 @@
         right: 32px;
         width: 40px;
         height: 40px;
-        background: #0a0a0a;
-        color: #ffffff;
+        background: var(--primary);
+        color: var(--primary-foreground);
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -207,8 +231,8 @@
     .org-card:hover .card-arrow {
         opacity: 1;
         transform: translateX(0);
-        background: #0a0a0a;
-        color: #ffffff;
+        background: var(--primary);
+        color: var(--primary-foreground);
     }
 
     /* Empty State */
