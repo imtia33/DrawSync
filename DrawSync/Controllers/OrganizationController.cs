@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using DrawSync.Filters;
+using Appwrite;
 using Appwrite.Services;
 
 namespace DrawSync.Controllers

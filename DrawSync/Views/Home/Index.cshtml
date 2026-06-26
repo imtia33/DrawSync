@@ -323,8 +323,7 @@
                 span.textContent = char;
                 span.className = 'reveal-char';
                 span.style.animationDelay = `${i * 0.1}s`;
-                if (i >= 4) span.style.color = 'var(--primary)';
-                else span.style.color = 'var(--foreground)';
+                span.style.color = '#000';
                 if (i === 4) title.appendChild(document.createElement('br'));
                 title.appendChild(span);
             });

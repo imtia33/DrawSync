@@ -738,6 +738,13 @@ namespace DrawSync.Controllers
                 // Setup Organization and Teams
                 var teamId = ID.Unique();
                 await _teams.Create(teamId, model.OrganizationName);
+                await _teams.CreateMembership(
+                    teamId: teamId,
+                    roles: new List<string> { "owner", "admin" },
+                    userId: userId,
+                    email: email,
+                    name: name ?? "Google User"
+                );
 
                 // Add the Google user as team owner (the API-key-created team is owned by the app).
                 try

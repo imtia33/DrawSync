@@ -276,6 +276,14 @@ namespace DrawSync.Controllers
 
             try
             {
+                var currentUserId = GetUserId();
+                var memberships = await _teams.ListMemberships(organizationId);
+                var currentUserMembership = memberships.Memberships.FirstOrDefault(m => m.UserId == currentUserId);
+                if (currentUserMembership == null || (!currentUserMembership.Roles.Contains("admin") && !currentUserMembership.Roles.Contains("owner")))
+                {
+                    return Forbid();
+                }
+
                 await _teams.DeleteMembership(organizationId, membershipId);
 
                 // Auto-update Usage record with new member count

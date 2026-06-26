@@ -3,6 +3,13 @@ using DrawSync.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Appwrite;
+using Appwrite.Services;
+using DrawSync.UnitOfWork.Interface;
+using System;
 
 namespace DrawSync.Hubs
 {
@@ -234,6 +241,9 @@ namespace DrawSync.Hubs
 
             var color = GetConnectionColor(room, Context.ConnectionId);
             var userName = GetConnectionUserName(room, Context.ConnectionId);
+            var userId = Context.UserIdentifier ?? Context.ConnectionId;
+
+            Console.WriteLine($"[DEBUG DrawingHub] User {userId} in drawing {drawingId} broadcasted CursorMoved");
 
             await Clients.OthersInGroup(drawingId).SendAsync("CursorMoved", new
             {
@@ -276,6 +286,9 @@ namespace DrawSync.Hubs
 
             var color = GetConnectionColor(room, Context.ConnectionId);
             var userName = GetConnectionUserName(room, Context.ConnectionId);
+            var userId = Context.UserIdentifier ?? Context.ConnectionId;
+
+            Console.WriteLine($"[DEBUG DrawingHub] User {userId} in drawing {drawingId} broadcasted ToolChanged ({tool})");
 
             await Clients.OthersInGroup(drawingId).SendAsync("ToolChanged", new
             {
@@ -291,6 +304,8 @@ namespace DrawSync.Hubs
         /// </summary>
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
+            var userId = Context.UserIdentifier ?? Context.ConnectionId;
+            Console.WriteLine($"[DEBUG DrawingHub] Connection {Context.ConnectionId} (User: {userId}) disconnected. Reason: {exception?.Message ?? "No exception"}");
             if (_connectionRooms.TryRemove(Context.ConnectionId, out var drawingId))
             {
                 RealtimeDebugger.Log("Disconnect", "Connection disconnected, leaving room.", level: RealtimeDebugger.Level.Info,
@@ -361,6 +376,7 @@ namespace DrawSync.Hubs
 
             if (removed != null)
             {
+                Console.WriteLine($"[DEBUG DrawingHub] User {removed.UserId} removed from room {drawingId}. Remaining connections: {remainingPresence.Count}");
                 // Leave SignalR group
                 await Groups.RemoveFromGroupAsync(connectionId, drawingId);
 

@@ -267,6 +267,12 @@
                 } else {
                     onlineEl.style.display = 'none';
                 }
+                const currentUserMembership = members.find(m => m.userId === currentUserId);
+                const isCurrentUserAdmin = currentUserMembership && (currentUserMembership.roles.includes('admin') || currentUserMembership.roles.includes('owner'));
+                const headers = isCurrentUserAdmin 
+                    ? '<th>Member</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th>'
+                    : '<th>Member</th><th>Role</th><th>Status</th><th>Joined</th>';
+
                 let rows = members.map(m => {
                     const displayName = m.userName || m.userEmail || 'Unknown';
                     const avatarName = encodeURIComponent(displayName);
@@ -299,7 +305,7 @@
                         <td>${actionCell}</td>
                     </tr>`;
                 }).join('');
-                list.innerHTML = `<table class="data-table"><thead><tr><th>Member</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table>`;
+                list.innerHTML = `<table class="data-table"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
             }
             updateCounter(members.length);
         } catch (err) { console.error('Failed to load members:', err); }
