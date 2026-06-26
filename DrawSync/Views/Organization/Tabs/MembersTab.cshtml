@@ -6,8 +6,11 @@
         <div class="header-text">
             <h2>Team Members</h2>
             <p class="subtitle" id="membersCounter">Loading workspace members...<span id="onlineCount" class="online-count" style="display:none"></span></p>
+            <p id="adminHint" class="subtitle" style="display:none; color: var(--muted-foreground); font-size: 0.8rem; margin-top: 6px;">
+                <i class="bi bi-shield-lock"></i> You have admin rights — you can invite and remove members.
+            </p>
         </div>
-        <button id="inviteMemberBtn" class="btn-new-drawing">
+        <button id="inviteMemberBtn" class="btn-new-drawing" style="display:none;">
             <i class="bi bi-person-plus"></i> Invite Member
         </button>
     </div>
@@ -69,10 +72,10 @@
     .form-input-group input, .form-input-group select { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; font-size: 1rem; outline: none; background: var(--input-bg); color: var(--foreground); }
     .form-input-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px hsl(from var(--ring) h s l / 0.15); }
     .modal-footer-btns { display: flex; gap: 12px; margin-top: 32px; }
-    .btn-cancel { flex: 1; padding: 14px; background: #0a0a0a; border: none; border-radius: var(--radius); font-weight: 700; color: #ffffff; cursor: pointer; transition: opacity 0.2s; opacity: 0.7; }
-    .btn-cancel:hover { opacity: 0.55; }
-    .btn-submit { flex: 2; padding: 14px; background: #0a0a0a; border: none; border-radius: var(--radius); font-weight: 700; color: #ffffff; cursor: pointer; transition: opacity 0.2s; }
-    .btn-submit:hover { opacity: 0.85; }
+    .btn-cancel { flex: 1; padding: 14px; background: var(--secondary); border: none; border-radius: var(--radius); font-weight: 700; color: var(--foreground); cursor: pointer; transition: all 0.2s; }
+    .btn-cancel:hover { filter: brightness(0.97); }
+    .btn-submit { flex: 2; padding: 14px; background: var(--primary); border: none; border-radius: var(--radius); font-weight: 700; color: var(--primary-foreground); cursor: pointer; transition: all 0.2s; }
+    .btn-submit:hover { background: var(--primary-hover); }
     .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
     .status-online { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.5); }
     .status-offline { background: #6b7280; opacity: 0.5; }
@@ -237,6 +240,20 @@
             const res = await fetch(`${apiBase}/members`);
             const data = await res.json();
             const members = data.memberships || [];
+            // Server tells us whether the current user may manage members.
+            const isAdmin = data.isCurrentMemberAdmin === true;
+
+            // Toggle the Invite button + admin hint visibility based on role.
+            const inviteBtn = document.getElementById('inviteMemberBtn');
+            const adminHint = document.getElementById('adminHint');
+            if (isAdmin) {
+                inviteBtn.style.display = 'flex';
+                adminHint.style.display = 'block';
+            } else {
+                inviteBtn.style.display = 'none';
+                adminHint.style.display = 'none';
+            }
+
             const list = document.getElementById('membersList');
             if (!members || members.length === 0) {
                 list.innerHTML = '<div class="loading-state"><p>No members found.</p></div>';
@@ -264,11 +281,11 @@
                     const statusClass = isOnline ? 'online' : 'offline';
                     const statusText = isOnline ? 'Online' : 'Offline';
                     const createdDate = m.createdAt ? new Date(m.createdAt).toLocaleDateString() : '—';
-                    
-                    const actionCell = isCurrentUserAdmin 
-                        ? `<td><button onclick="removeMember('${m.id}')" class="btn-remove">Remove</button></td>`
-                        : '';
-
+                    // Admins see the Remove button (and never for their own membership).
+                    const canRemove = isAdmin && m.userId !== currentUserId;
+                    const actionCell = canRemove
+                        ? `<button onclick="removeMember('${m.id}')" class="btn-remove">Remove</button>`
+                        : `<span style="color: var(--muted-foreground); font-size: 0.8rem;">${m.userId === currentUserId ? 'You' : '—'}</span>`;
                     return `<tr>
                         <td>
                             <div style="display:flex;align-items:center;gap:12px">
@@ -285,7 +302,7 @@
                         <td><span class="role-badge role-${role}">${role}</span></td>
                         <td><span class="online-badge ${statusClass}"><span class="status-dot status-${statusClass}"></span>${statusText}</span></td>
                         <td class="subtitle" style="font-size:0.8rem">${createdDate}</td>
-                        ${actionCell}
+                        <td>${actionCell}</td>
                     </tr>`;
                 }).join('');
                 list.innerHTML = `<table class="data-table"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
@@ -310,7 +327,20 @@
 
     window.removeMember = async function(id) {
         if (confirm('Are you sure you want to remove this member?')) {
-            try { await fetch(`${apiBase}/members/${id}`, { method: 'DELETE' }); loadMembers(); } catch (err) { alert('Failed to remove member'); }
+            try {
+                const res = await fetch(`${apiBase}/members/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadMembers();
+                } else if (res.status === 403) {
+                    let msg = 'Only organization admins can remove members.';
+                    try { const d = await res.json(); if (d && d.error) msg = d.error; } catch (_) {}
+                    alert(msg);
+                } else {
+                    let msg = 'Failed to remove member';
+                    try { const d = await res.json(); if (d && d.error) msg = d.error; } catch (_) {}
+                    alert(msg);
+                }
+            } catch (err) { alert('Failed to remove member'); }
         }
     }
 

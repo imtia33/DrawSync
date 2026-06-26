@@ -9,6 +9,7 @@ class RealtimeClient {
     this.drawingId = null;
     this.userName = null;
     this.boardType = null;
+    this.organizationId = null;
     this.myColor = null;
     this.isConnected = false;
     this.presence = []; // [{ userId, userName, color }]
@@ -55,8 +56,11 @@ class RealtimeClient {
     try {
       // Start connection
       await this.connection.start();
+      // CRITICAL FIX: mark the connection as live so sendElement/sendCursor/etc. stop early-returning.
+      // Previously isConnected was only ever set on reconnect, so realtime sync was completely broken.
+      this.isConnected = true;
       this._updateConnectionStatus("connected");
-      console.log('[DEBUG WebSocket] Connected to DrawingHub successfully');
+      this._logDebug("connected", "SignalR transport started.");
 
       // Join the drawing room
       const result = await this.connection.invoke(
@@ -70,8 +74,12 @@ class RealtimeClient {
         console.log('[DEBUG WebSocket] Joined drawing room:', drawingId, 'with color:', result.color);
         this.myColor = result.color;
         this.presence = result.presence || [];
+        this.organizationId = result.organizationId || null;
         this._renderPresence();
         this._showPresenceBar();
+        this._logDebug("joined", `Joined drawing ${drawingId} (org=${this.organizationId || "?"}). Presence=${this.presence.length}.`);
+      } else {
+        this._logDebug("join-failed", "JoinDrawing returned no success payload.", "warn");
       }
 
       // Start cursor cleanup
@@ -81,6 +89,9 @@ class RealtimeClient {
       );
     } catch (err) {
       console.error("[DEBUG WebSocket] SignalR connection failed:", err);
+
+      this.isConnected = false;
+      this._logDebug("connect-error", `SignalR connection/join failed: ${err && err.message ? err.message : err}`, "error");
 
       // Check if it's a "board full" error
       if (err.message && err.message.includes("full")) {
@@ -185,7 +196,7 @@ class RealtimeClient {
   _registerHandlers() {
     // User joined the drawing
     this.connection.on("UserJoined", (user) => {
-      console.log('[DEBUG WebSocket] UserJoined event received:', user);
+      this._logDebug("recv-user-joined", `user=${user && user.userName} (${user && user.userId})`);
       // Add to presence if not already there
       if (!this.presence.find((p) => p.userId === user.userId)) {
         this.presence.push(user);
@@ -199,7 +210,7 @@ class RealtimeClient {
 
     // User left the drawing
     this.connection.on("UserLeft", (data) => {
-      console.log('[DEBUG WebSocket] UserLeft event received:', data);
+      this._logDebug("recv-user-left", `user=${data && data.userId}`);
       this.presence = this.presence.filter((p) => p.userId !== data.userId);
       delete this.remoteCursors[data.userId];
       this._renderPresence();
@@ -212,7 +223,7 @@ class RealtimeClient {
 
     // Element changed by another user
     this.connection.on("ElementChanged", (data) => {
-      console.log('[DEBUG WebSocket] ElementChanged event received:', data);
+      this._logDebug("recv-element", `action='${data && data.action}' from user=${data && data.userId}`);
       if (this.onElementChanged) {
         this.onElementChanged(data.element, data.action, data.userId);
       }
@@ -263,12 +274,14 @@ class RealtimeClient {
       console.log('[DEBUG WebSocket] Reconnecting to DrawingHub...');
       this.isConnected = false;
       this._updateConnectionStatus("reconnecting");
+      this._logDebug("reconnecting", "Transport reconnecting…", "warn");
     });
 
     this.connection.onreconnected(async () => {
       console.log('[DEBUG WebSocket] Reconnected to DrawingHub successfully');
       this.isConnected = true;
       this._updateConnectionStatus("connected");
+      this._logDebug("reconnected", "Transport reconnected.");
 
       // Rejoin the drawing room after reconnect
       try {
@@ -283,9 +296,11 @@ class RealtimeClient {
           this.myColor = result.color;
           this.presence = result.presence || [];
           this._renderPresence();
+          this._logDebug("rejoined", `Rejoined drawing after reconnect. Presence=${this.presence.length}.`);
         }
       } catch (err) {
-        console.error("[DEBUG WebSocket] Failed to rejoin drawing after reconnect:", err);
+        console.error("Failed to rejoin drawing after reconnect:", err);
+        this._logDebug("rejoin-failed", `Rejoin failed: ${err && err.message ? err.message : err}`, "error");
       }
     });
 
@@ -293,6 +308,7 @@ class RealtimeClient {
       console.log('[DEBUG WebSocket] Connection to DrawingHub closed');
       this.isConnected = false;
       this._updateConnectionStatus("disconnected");
+      this._logDebug("closed", "Connection closed.", "warn");
     });
   }
 
@@ -392,6 +408,47 @@ class RealtimeClient {
           window.history.back();
         };
       }
+    }
+  }
+
+  // --- Realtime Debugger (client side) ---
+  // Emits structured log lines to the browser console AND to the on-board debug panel (if present)
+  // and to the global window.__realtimeDebugEvents array, so we can verify broadcasts are working.
+  _logDebug(category, message, level = "info") {
+    const entry = {
+      t: Date.now(),
+      level,
+      category,
+      message,
+      drawingId: this.drawingId,
+      org: this.organizationId || null,
+      connected: this.isConnected,
+      presence: this.presence.length,
+    };
+    window.__realtimeDebugEvents = window.__realtimeDebugEvents || [];
+    window.__realtimeDebugEvents.push(entry);
+    if (window.__realtimeDebugEvents.length > 200) window.__realtimeDebugEvents.shift();
+
+    const tag = level === "error" ? "%c[RT-ERROR]" : level === "warn" ? "%c[RT-WARN]" : "%c[RT-INFO]";
+    const color = level === "error" ? "color:#ef4444;font-weight:bold" : level === "warn" ? "color:#f59e0b;font-weight:bold" : "color:#10b981;font-weight:bold";
+    console.log(tag, color, `${category}: ${message}`);
+
+    // Push into the on-board debug panel if it exists.
+    const panel = document.getElementById("rtDebugLog");
+    if (panel) {
+      const line = document.createElement("div");
+      line.className = `rt-debug-line rt-debug-${level}`;
+      const time = new Date(entry.t).toLocaleTimeString();
+      line.innerHTML = `<span class="rt-debug-time">${time}</span> <span class="rt-debug-cat">${category}</span> <span class="rt-debug-msg"></span>`;
+      line.querySelector(".rt-debug-msg").textContent = message;
+      panel.prepend(line);
+      // Keep the panel bounded.
+      while (panel.children.length > 80) panel.removeChild(panel.lastChild);
+    }
+    // Update the debug panel header stats if present.
+    const stats = document.getElementById("rtDebugStats");
+    if (stats) {
+      stats.textContent = `connected=${this.isConnected} • presence=${this.presence.length} • drawing=${this.drawingId || "-"} • org=${this.organizationId || "-"}`;
     }
   }
 }

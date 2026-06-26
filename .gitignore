@@ -61,3 +61,5 @@ appsettings.Development.json
 
 # Properties
 Properties/launchSettings.json
+drawsync.log
+start-server.sh

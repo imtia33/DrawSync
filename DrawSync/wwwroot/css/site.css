@@ -377,12 +377,24 @@ header {
 }
 
 /* ============================================
+   App Shell — sticky footer wrapper
+   ============================================ */
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell > .main-content-container {
+  flex: 1 0 auto;
+}
+
+/* ============================================
    Layout Spacing
    ============================================ */
 .main-content-container {
   padding-top: 70px;
   /* Space for fixed navbar */
-  min-height: calc(100vh - 70px);
 }
 
 /* ============================================
@@ -407,10 +419,115 @@ header {
 }
 
 /* ============================================
+   User Dropdown Menu
+   ============================================ */
+.user-dropdown {
+  position: relative;
+}
+
+.user-menu-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 100px;
+  padding: 4px 12px 4px 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--foreground);
+}
+
+.user-menu-trigger:hover {
+  background: var(--secondary);
+  border-color: var(--border);
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+html.dark .user-avatar {
+  filter: brightness(0.95);
+}
+
+.user-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--foreground);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-caret {
+  font-size: 0.7rem;
+  color: var(--muted-foreground);
+  transition: transform 0.2s ease;
+}
+
+.user-dropdown.show .user-caret {
+  transform: rotate(180deg);
+}
+
+.user-menu {
+  background: var(--popover);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-xl);
+  padding: 8px;
+  min-width: 220px;
+  margin-top: 8px;
+  animation: userMenuIn 0.18s ease-out;
+}
+
+@keyframes userMenuIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.user-menu .dropdown-item {
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--foreground);
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+}
+
+.user-menu .dropdown-item:hover {
+  background: var(--secondary);
+  color: var(--primary);
+}
+
+.user-menu .dropdown-item.text-danger:hover {
+  background: hsl(from var(--destructive) h s l / 0.1);
+  color: var(--destructive) !important;
+}
+
+.user-menu .dropdown-divider {
+  border-color: var(--border);
+  margin: 6px 0;
+}
+
+@media (max-width: 576px) {
+  .user-name { display: none; }
+  .user-caret { display: none; }
+  .user-menu-trigger { padding: 4px; }
+}
+
+/* ============================================
    Footer
    ============================================ */
-footer {
-  padding: 2rem 0;
+.app-footer {
+  flex-shrink: 0;
+  padding: 2.5rem 0 2rem;
   background: var(--secondary);
   border-top: 1px solid var(--border);
   font-size: 0.875rem;
@@ -419,7 +536,65 @@ footer {
     border-color 0.3s ease;
 }
 
-footer .text-muted {
+.footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.footer-brand {
+  max-width: 320px;
+}
+
+.footer-logo {
+  font-family: "Syncopate", sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 1rem;
+  color: var(--foreground);
+}
+
+.footer-logo span {
+  color: var(--primary);
+}
+
+.footer-tagline {
+  color: var(--muted-foreground);
+  font-size: 0.8rem;
+  margin: 8px 0 0 0;
+  line-height: 1.5;
+}
+
+.footer-links {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.footer-links a {
+  color: var(--muted-foreground);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.footer-links a:hover {
+  color: var(--primary);
+}
+
+.footer-bottom {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+.app-footer .text-muted {
   color: var(--muted-foreground) !important;
 }
 

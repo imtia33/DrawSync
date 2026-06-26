@@ -2,12 +2,14 @@ using System.Security.Claims;
 using DrawSync.UnitOfWork.Interface;
 using DrawSync.Models;
 using DrawSync.Models.ViewModels;
+using DrawSync.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Appwrite;
 using Appwrite.Services;
+using DrawSync.Helpers;
 
 using System;
 using System.Collections.Generic;
@@ -22,13 +24,17 @@ namespace DrawSync.Controllers
         private readonly Account _account;
         private readonly Teams _teams;
         private readonly IConfiguration _config;
+        private readonly IOrgAccessService _orgAccess;
+        private readonly Client _client;
 
-        public AuthController(IUnitOfWork unitOfWork, Account account, Teams teams, IConfiguration config)
+        public AuthController(IUnitOfWork unitOfWork, Account account, Teams teams, IConfiguration config, IOrgAccessService orgAccess, Client client)
         {
             _unitOfWork = unitOfWork;
             _account = account;
             _teams = teams;
             _config = config;
+            _orgAccess = orgAccess;
+            _client = client;
         }
 
         [HttpGet]
@@ -52,13 +58,46 @@ namespace DrawSync.Controllers
 
             try
             {
-                // Create session using credentials
-                var session = await _account.CreateEmailPasswordSession(model.Email, model.Password);
-                
+                var endpoint = _config["Appwrite:Endpoint"]!;
+                var project = _config["Appwrite:Project"]!;
+
+                // CRITICAL: In Appwrite 1.6+, Session.Secret is empty — the secret is
+                // delivered only via the Set-Cookie header (a_session_{projectId}). The
+                // SDK doesn't surface response headers, so we perform a thin raw REST
+                // login that lets us capture that cookie. Client.SetSession(cookieValue)
+                // is what actually authenticates subsequent session-scoped SDK calls.
+                var sessionCookie = await SessionCookieHelper.CreateEmailPasswordSessionAsync(
+                    endpoint, project, model.Email, model.Password);
+
+                if (string.IsNullOrEmpty(sessionCookie))
+                {
+                    Console.WriteLine("[Login] Failed to capture session cookie from Set-Cookie header.");
+                    ModelState.AddModelError(string.Empty, "Login failed: could not establish session.");
+                    return View(model);
+                }
+
+                // Also create the session via the SDK so the scoped client is authenticated
+                // for the _account.Get() call below. (The SDK applies the cookie internally.)
+                Appwrite.Models.Session session;
+                try
+                {
+                    session = await _account.CreateEmailPasswordSession(model.Email, model.Password);
+                }
+                catch (AppwriteException ex)
+                {
+                    Console.WriteLine($"[Login] SDK CreateEmailPasswordSession failed: {ex.Message}");
+                    ModelState.AddModelError(string.Empty, "Login failed: " + ex.Message);
+                    return View(model);
+                }
+
+                // Bind the captured cookie to the scoped client so _account.Get() runs as
+                // the user (SetSession expects the full cookie value, NOT the bare secret).
+                _client.SetSession(sessionCookie);
+
                 // Retrieve current account status
                 var account = await _account.Get();
                 Console.WriteLine($"[DEBUG] Appwrite Account ID: {account.Id}, Email: {account.Email}");
-                
+
                 // Fetch corresponding database user document
                 var user = await _unitOfWork.Users.GetByEmailAsync(account.Email);
 
@@ -66,7 +105,7 @@ namespace DrawSync.Controllers
                 {
                     Console.WriteLine($"[DEBUG] Database User Row missing for Email: {account.Email}");
                     await _account.DeleteSession("current");
-                    
+
                     TempData["LoginError"] = "User record missing from database. Please register again.";
                     ModelState.AddModelError(string.Empty, "User record missing from database.");
                     return View(model);
@@ -83,7 +122,9 @@ namespace DrawSync.Controllers
                     new Claim(ClaimTypes.Email, user.Email),
                     new Claim(ClaimTypes.Role, role),
                     new Claim("IsVerified", isVerified ? "true" : "false"),
-                    new Claim("AppwriteSession", session.Secret)
+                    // Store the full cookie value (not the empty session.Secret) so every
+                    // per-request scoped Client can re-authenticate via SetSession(cookie).
+                    new Claim("AppwriteSession", sessionCookie)
                 };
 
                 var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -102,8 +143,12 @@ namespace DrawSync.Controllers
                     return RedirectToAction("VerificationPending");
                 }
 
-                // If fully verified, navigate to organization space
-                var accessibleOrganizations = await _unitOfWork.Organizations.GetAllAsync();
+                // If fully verified, navigate to organization space.
+                // Use the just-created session cookie to list ONLY the organizations this
+                // user belongs to (cross-checked against Teams.List — see OrgAccessService).
+                Console.WriteLine($"[Login] sessionCookie len={sessionCookie.Length}, isVerified={isVerified}");
+                var accessibleOrganizations = await _orgAccess.GetOrganizationsForSessionAsync(sessionCookie);
+                Console.WriteLine($"[Login] GetOrganizationsForSessionAsync returned {accessibleOrganizations.Count} org(s)");
                 var firstOrg = accessibleOrganizations.FirstOrDefault();
                 if (firstOrg?.Id != null)
                 {
@@ -155,8 +200,23 @@ namespace DrawSync.Controllers
                     name: model.Name
                 );
 
-                // Create initial email session so we possess write permissions for tables and invite templates
+                // Create initial email session so we possess write permissions for tables and invite templates.
+                // CRITICAL: Session.Secret is empty in Appwrite 1.6+ — capture the cookie from Set-Cookie.
+                var endpoint = _config["Appwrite:Endpoint"]!;
+                var project = _config["Appwrite:Project"]!;
+                var sessionCookie = await SessionCookieHelper.CreateEmailPasswordSessionAsync(
+                    endpoint, project, model.Email, model.Password);
+                if (string.IsNullOrEmpty(sessionCookie))
+                {
+                    ModelState.AddModelError(string.Empty, "Registration failed: could not establish session.");
+                    return View(model);
+                }
+
                 var session = await _account.CreateEmailPasswordSession(model.Email, model.Password);
+
+                // Bind the captured COOKIE (not the empty session.Secret) to the scoped client
+                // so subsequent session-scoped calls (e.g. CreateEmailVerification) act as the user.
+                _client.SetSession(sessionCookie);
 
                 // Add User document representation to local users table
                 var user = new User
@@ -173,14 +233,29 @@ namespace DrawSync.Controllers
                 var teamId = ID.Unique();
                 try
                 {
+                    Console.WriteLine($"[Register] Creating team teamId={teamId} name={model.OrganizationName} for user={account.Id}");
                     await _teams.Create(teamId, model.OrganizationName);
-                    await _teams.CreateMembership(
-                        teamId: teamId,
-                        roles: new List<string> { "owner", "admin" },
-                        userId: account.Id,
-                        email: model.Email,
-                        name: model.Name
-                    );
+                    Console.WriteLine("[Register] Team created OK.");
+
+                    // CRITICAL: _teams uses the server API key, so the team's creator/owner is the
+                    // application — NOT the just-registered user. Without explicitly granting the
+                    // user a membership, they would not be able to read their own organization row
+                    // (which is scoped to Role.Team(teamId)). Add the user as a team "owner".
+                    try
+                    {
+                        await _teams.CreateMembership(
+                            teamId: teamId,
+                            roles: new List<string> { "owner" },
+                            email: model.Email,
+                            userId: account.Id,
+                            name: model.Name
+                        );
+                        Console.WriteLine("[Register] Team membership (owner) added OK.");
+                    }
+                    catch (AppwriteException mex)
+                    {
+                        Console.WriteLine("[Register] Failed to add user as team owner: " + mex.Message);
+                    }
 
                     var org = new Models.Organization
                     {
@@ -242,7 +317,7 @@ namespace DrawSync.Controllers
                     new Claim(ClaimTypes.Email, user.Email),
                     new Claim(ClaimTypes.Role, role),
                     new Claim("IsVerified", "false"),
-                    new Claim("AppwriteSession", session.Secret)
+                    new Claim("AppwriteSession", sessionCookie)
                 };
 
                 var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -475,32 +550,49 @@ namespace DrawSync.Controllers
 
             try
             {
-                // Exchange credentials for session token
+                var endpoint = _config["Appwrite:Endpoint"]!;
+                var project = _config["Appwrite:Project"]!;
+
+                // CRITICAL: In Appwrite 1.6+ Session.Secret is empty; the OAuth2 callback
+                // gives us (userId, secret) which we must exchange for a session. Capture
+                // the a_session_{projectId} cookie from the Set-Cookie header — that's what
+                // Client.SetSession() needs to authenticate subsequent session-scoped calls.
+                var sessionCookie = await SessionCookieHelper.CreateSessionFromOAuthAsync(
+                    endpoint, project, userId, secret);
+
+                if (string.IsNullOrEmpty(sessionCookie))
+                {
+                    Console.WriteLine("[GoogleCallback] Failed to capture session cookie from Set-Cookie header.");
+                    TempData["LoginError"] = "Google login failed: could not establish session.";
+                    return RedirectToAction("Login");
+                }
+
+                // Also call the SDK so the scoped client is authenticated for _account.Get().
                 var session = await _account.CreateSession(userId, secret);
-                
-                // Inject session into Client service manually for this execution thread using the direct secret
+
+                // Bind the captured COOKIE (not the bare OAuth secret) to the scoped client.
                 var scopedClient = HttpContext.RequestServices.GetRequiredService<Client>();
-                scopedClient.SetSession(secret);
+                scopedClient.SetSession(sessionCookie);
 
                 var account = await _account.Get();
-                
+
                 // Check database representation
                 var user = await _unitOfWork.Users.GetByEmailAsync(account.Email);
-                
+
                 if (user == null)
                 {
                     // Redirect to final onboarding stage for completing new account registrations via query parameters
-                    return RedirectToAction("CompleteGoogleSignup", new { 
-                        email = account.Email, 
-                        name = account.Name, 
-                        userId = account.Id, 
-                        sessionSecret = secret 
+                    return RedirectToAction("CompleteGoogleSignup", new {
+                        email = account.Email,
+                        name = account.Name,
+                        userId = account.Id,
+                        sessionSecret = sessionCookie
                     });
                 }
 
                 // Existing account logs in directly
                 var role = account.Labels.Contains("admin") ? "Admin" : "User";
-                
+
                 var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.NameIdentifier, user.Id ?? string.Empty),
@@ -508,13 +600,13 @@ namespace DrawSync.Controllers
                     new Claim(ClaimTypes.Email, user.Email),
                     new Claim(ClaimTypes.Role, role),
                     new Claim("IsVerified", "true"), // Google emails verified by default
-                    new Claim("AppwriteSession", secret)
+                    new Claim("AppwriteSession", sessionCookie)
                 };
 
                 var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity));
 
-                var accessibleOrganizations = await _unitOfWork.Organizations.GetAllAsync();
+                var accessibleOrganizations = await _orgAccess.GetOrganizationsForSessionAsync(sessionCookie);
                 var firstOrg = accessibleOrganizations.FirstOrDefault();
                 if (firstOrg?.Id != null)
                 {
@@ -653,6 +745,22 @@ namespace DrawSync.Controllers
                     email: email,
                     name: name ?? "Google User"
                 );
+
+                // Add the Google user as team owner (the API-key-created team is owned by the app).
+                try
+                {
+                    await _teams.CreateMembership(
+                        teamId: teamId,
+                        roles: new List<string> { "owner" },
+                        email: email,
+                        userId: userId,
+                        name: name ?? "Google User"
+                    );
+                }
+                catch (AppwriteException mex)
+                {
+                    Console.WriteLine("[CompleteGoogleSignup] Failed to add user as team owner: " + mex.Message);
+                }
 
                 var org = new Models.Organization
                 {

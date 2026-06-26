@@ -1,5 +1,0 @@
-UserId: 6a329084000b62d99103
-Calling userTeams.List()...
-Exception: User (role: guests) missing scopes (["teams.read"])
-Stack:    at Appwrite.Client.Call[T](String method, String path, Dictionary`2 headers, Dictionary`2 parameters, Func`2 convert)
-   at DrawSync.Controllers.OrganizationController.Index() in E:\DrawSync\DrawSync\Controllers\OrganizationController.cs:line 38
