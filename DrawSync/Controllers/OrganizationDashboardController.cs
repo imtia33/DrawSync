@@ -21,12 +21,14 @@ namespace DrawSync.Controllers
         private readonly IUnitOfWork _unitOfWork;
         private readonly Teams _teams;
         private readonly Account _account;
+        private readonly Client _userClient;
 
-        public OrganizationDashboardController(IUnitOfWork unitOfWork, Teams teams, Account account)
+        public OrganizationDashboardController(IUnitOfWork unitOfWork, Teams teams, Account account, Client userClient)
         {
             _unitOfWork = unitOfWork;
             _teams = teams;
             _account = account;
+            _userClient = userClient;
         }
 
         private string? GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -34,7 +36,19 @@ namespace DrawSync.Controllers
         private async Task<bool> IsUserInOrgAsync(string organizationId)
         {
             var org = await _unitOfWork.Organizations.GetByIdAsync(organizationId);
-            return org != null;
+            if (org == null) return false;
+
+            try
+            {
+                var userTeamsService = new Teams(_userClient);
+                var userTeams = await userTeamsService.List();
+                return userTeams.Teams.Any(t => t.Id == organizationId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Error] IsUserInOrgAsync failed: {ex.Message}");
+                return false;
+            }
         }
 
         // Dashboard Overview - List Drawings
@@ -237,6 +251,14 @@ namespace DrawSync.Controllers
 
             try
             {
+                var currentUserId = GetUserId();
+                var memberships = await _teams.ListMemberships(organizationId);
+                var currentUserMembership = memberships.Memberships.FirstOrDefault(m => m.UserId == currentUserId);
+                if (currentUserMembership == null || (!currentUserMembership.Roles.Contains("admin") && !currentUserMembership.Roles.Contains("owner")))
+                {
+                    return Forbid();
+                }
+
                 await _teams.DeleteMembership(organizationId, membershipId);
 
                 // Auto-update Usage record with new member count

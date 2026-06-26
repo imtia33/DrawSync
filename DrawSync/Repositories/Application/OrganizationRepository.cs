@@ -32,5 +32,24 @@ namespace DrawSync.Repositories.Application
             var json = JsonConvert.SerializeObject(row.Data);
             return JsonConvert.DeserializeObject<Organization>(json);
         }
+
+        public async Task<IEnumerable<Organization>> GetByIdsAsync(IEnumerable<string> ids)
+        {
+            if (ids == null || !ids.Any())
+            {
+                return Enumerable.Empty<Organization>();
+            }
+
+            var result = await _tables.ListRows(
+                databaseId: _databaseId,
+                tableId: _tableId,
+                queries: new List<string> { Query.Equal("$id", ids.ToList()) }
+            );
+
+            return result.Rows.Select(row => {
+                var json = JsonConvert.SerializeObject(row.Data);
+                return JsonConvert.DeserializeObject<Organization>(json)!;
+            });
+        }
     }
 }

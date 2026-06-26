@@ -174,6 +174,13 @@ namespace DrawSync.Controllers
                 try
                 {
                     await _teams.Create(teamId, model.OrganizationName);
+                    await _teams.CreateMembership(
+                        teamId: teamId,
+                        roles: new List<string> { "owner", "admin" },
+                        userId: account.Id,
+                        email: model.Email,
+                        name: model.Name
+                    );
 
                     var org = new Models.Organization
                     {
@@ -639,6 +646,13 @@ namespace DrawSync.Controllers
                 // Setup Organization and Teams
                 var teamId = ID.Unique();
                 await _teams.Create(teamId, model.OrganizationName);
+                await _teams.CreateMembership(
+                    teamId: teamId,
+                    roles: new List<string> { "owner", "admin" },
+                    userId: userId,
+                    email: email,
+                    name: name ?? "Google User"
+                );
 
                 var org = new Models.Organization
                 {
