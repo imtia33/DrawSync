@@ -567,9 +567,7 @@ namespace DrawSync.Controllers
                     return RedirectToAction("Login");
                 }
 
-                // Also call the SDK so the scoped client is authenticated for _account.Get().
-                var session = await _account.CreateSession(userId, secret);
-
+                // The session is already created and token consumed by SessionCookieHelper.
                 // Bind the captured COOKIE (not the bare OAuth secret) to the scoped client.
                 var scopedClient = HttpContext.RequestServices.GetRequiredService<Client>();
                 scopedClient.SetSession(sessionCookie);

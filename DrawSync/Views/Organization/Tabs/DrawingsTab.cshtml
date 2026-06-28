@@ -252,15 +252,15 @@
                     list.innerHTML = drawings.map(d => {
                         const isMap = d.type === 'map';
                         return `
-                            <div class="drawing-card" onclick="window.location.href='/organization/${orgId}/whiteboard/board/${d['$id']}'">
+                            <div class="drawing-card" onclick="window.location.href='/organization/${orgId}/whiteboard/board/${d.id || d['$id']}'">
                                 <div class="card-icon" style="background: ${isMap ? 'hsl(from var(--primary) h s l / 0.1)' : 'var(--secondary)'}; color: ${isMap ? '#3b82f6' : 'var(--primary)'}">
                                     <i class="bi ${isMap ? 'bi-map-fill' : 'bi-brush-fill'}"></i>
                                 </div>
                                 <h4>${d.name}</h4>
                                 <p>${d.description || (isMap ? 'Georeferenced construction map.' : 'No description provided for this drawing.')}</p>
                                 <div class="card-footer">
-                                    <span class="date-meta">Created ${new Date(d['$createdAt']).toLocaleDateString()}</span>
-                                    <button class="btn-delete" onclick="event.stopPropagation(); deleteDrawing('${d['$id']}')" title="Delete Drawing">
+                                    <span class="date-meta">Created ${new Date(d.createdAt || d['$createdAt']).toLocaleDateString()}</span>
+                                    <button class="btn-delete" onclick="event.stopPropagation(); deleteDrawing('${d.id || d['$id']}')" title="Delete Drawing">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </div>

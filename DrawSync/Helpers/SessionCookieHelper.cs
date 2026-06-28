@@ -61,7 +61,7 @@ namespace DrawSync.Helpers
             string endpoint, string projectId, string userId, string secret)
         {
             using var http = new HttpClient();
-            var req = new HttpRequestMessage(HttpMethod.Post, $"{endpoint.TrimEnd('/')}/account/sessions")
+            var req = new HttpRequestMessage(HttpMethod.Post, $"{endpoint.TrimEnd('/')}/account/sessions/token")
             {
                 Content = new FormUrlEncodedContent(new Dictionary<string, string>
                 {
